@@ -12,17 +12,22 @@ Prerequisites
 4. tensorflow
 5. ROS
 
+Ray Tracing
+-----
+
+Obtain the S3DIS dataset from [here](http://buildingparser.stanford.edu/dataset.html),
+which is from the paper *3D Semantic Parsing of Large-Scale Indoor Spaces* by Armeni et al..
+Run the following code to generate a ROS bag file as a result of the scan simulation.
+
+	python raytrace_dynamic.py --area 3
+
+
 Scan Data
 -----
 
-- Download bag files from the following URLs to the data directory
-	- https://www.dropbox.com/s/fka0si2xcr78fms/area1.bag?dl=0
-	- https://www.dropbox.com/s/xro6c5sf7wniei5/area3.bag?dl=0
-	- https://www.dropbox.com/s/6vd1jw0096ka771/area4.bag?dl=0
-	- https://www.dropbox.com/s/uxqps4o6rd5lk4m/area5.bag?dl=0
-	- https://www.dropbox.com/s/k0a3aos9h3dz6u6/area6.bag?dl=0
 - The point cloud data contains 3D coordinates (XYZ), color (RGB), object instance ID (O), and class ID (C) for each scan point.
 - The bag file structures is as follows:
+
 Topic | Data Type | Description
 --- | --- | ---
 laser_cloud_surround | sensors_msgs/PointCloud2 | Array of (X,Y,Z,R,G,B,O,C) tuples
