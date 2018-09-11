@@ -31,7 +31,7 @@ Scan Data
 -----
 
 - The point cloud data contains 3D coordinates (XYZ), color (RGB), object instance ID (O), and class ID (C) for each scan point.
-- The bag file structures is as follows:
+- The bag file structure is as follows:
 
 Topic | Data Type | Description
 --- | --- | ---

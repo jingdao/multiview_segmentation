@@ -290,7 +290,7 @@ print("Creating RaxNet with %d classes"%(NUM_CLASSES))
 saver = tf.train.Saver(rnet.pkernel +  rnet.pbias +  rnet.vkernel +  rnet.vbias +  rnet.rkernel +  rnet.rbias)
 saver.restore(sess, MODEL_PATH2)
 
-rospy.init_node('inc_cls_3d')
+rospy.init_node('inc_seg')
 rospy.Subscriber('laser_cloud_surround',PointCloud2,cloud_surround_callback)
 rospy.Subscriber('slam_out_pose',PoseStamped,pose_callback)
 pubOutput = rospy.Publisher('output_cloud', PointCloud2, queue_size=1)

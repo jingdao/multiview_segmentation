@@ -373,8 +373,7 @@ trajectory_x = []
 trajectory_y = []
 gt_points = []
 scan_offset = []
-#for i in range(j+1, len(path)):
-for i in range(j+1, j+5):
+for i in range(j+1, len(path)):
 	target = path[i]
 	if not tuple(target) in navigable:
 		print('Skip',source, target)
