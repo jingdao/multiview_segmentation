@@ -11,6 +11,7 @@ Prerequisites
 3. scikit-learn
 4. tensorflow
 5. ROS
+6. h5py
 
 Ray Tracing
 -----
@@ -19,6 +20,10 @@ Obtain the S3DIS dataset from [here](http://buildingparser.stanford.edu/dataset.
 which is from the paper *3D Semantic Parsing of Large-Scale Indoor Spaces* by Armeni et al..
 Run the following code to generate a ROS bag file as a result of the scan simulation.
 
+	#combine all rooms from Area 3 to a single HDF5 file
+	python building_parser_combined.py --area 3
+
+	#perform ray-tracing to generate a bag file
 	python raytrace_dynamic.py --area 3
 
 
@@ -39,6 +44,9 @@ Usage
 
 	#start the ROS node for incremental segmentation
 	#select Area 3 as the validation dataset
+	#use the flag --color to publish original color point cloud scans
+	#use the flag --instance to publish instance segmentation results
+	#use the flag --semantic to publish semantic segmentation results
 	python inc_seg.py --area 3
 	
 	#use RViz as a visualization tool
