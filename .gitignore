@@ -1,0 +1,4 @@
+*.pyc
+data/*.bag
+data/*.h5
+.*.swp

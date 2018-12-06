@@ -47,7 +47,7 @@ neighbor_radii = 0.3
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
 embedding_size = 50
-dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.99
+dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.98
 feature_size = 6
 NUM_CLASSES = len(classes)
 
