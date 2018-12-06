@@ -392,7 +392,7 @@ for i in range(j+1, len(path)):
 			continue
 		if len(trajectory_x) >= 2:
 			new_scan = collect_scan_discrete(x,y,z,pointmap,scan_range)
-			xyz = numpy.array(list(new_scan)) * resolution
+			xyz = numpy.array([pointmap[p][[0,1,2]] for p in new_scan])
 			rgboc = numpy.array([pointmap[p][[3,4,5,6,7]] for p in new_scan])
 			pcd = numpy.hstack((xyz, rgboc))
 			if len(pcd) < 0.25 * num_samples:

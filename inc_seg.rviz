@@ -88,9 +88,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.1
-      Style: Flat Squares
+      Style: Points
       Topic: /ceiling
       Unreliable: false
       Use Fixed Frame: true
@@ -118,9 +118,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.1
-      Style: Flat Squares
+      Style: Points
       Topic: /floor
       Unreliable: false
       Use Fixed Frame: true
@@ -148,9 +148,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /wall
       Unreliable: false
       Use Fixed Frame: true
@@ -178,9 +178,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /clutter
       Unreliable: false
       Use Fixed Frame: true
@@ -208,9 +208,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /beam
       Unreliable: false
       Use Fixed Frame: true
@@ -225,8 +225,8 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color: 0; 100; 100
+      Color Transformer: FlatColor
       Decay Time: 9999
       Enabled: true
       Invert Rainbow: false
@@ -238,9 +238,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /board
       Unreliable: false
       Use Fixed Frame: true
@@ -268,9 +268,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /bookcase
       Unreliable: false
       Use Fixed Frame: true
@@ -298,9 +298,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /chair
       Unreliable: false
       Use Fixed Frame: true
@@ -328,9 +328,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /column
       Unreliable: false
       Use Fixed Frame: true
@@ -358,9 +358,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /door
       Unreliable: false
       Use Fixed Frame: true
@@ -388,9 +388,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /sofa
       Unreliable: false
       Use Fixed Frame: true
@@ -418,9 +418,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /table
       Unreliable: false
       Use Fixed Frame: true
@@ -448,9 +448,9 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.08
-      Style: Flat Squares
+      Style: Points
       Topic: /window
       Unreliable: false
       Use Fixed Frame: true
@@ -467,7 +467,7 @@ Visualization Manager:
       Class: rviz/PointCloud2
       Color: 255; 255; 255
       Color Transformer: RGB8
-      Decay Time: 0
+      Decay Time: 9999
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
@@ -510,22 +510,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 43.0568
+      Distance: 38.841
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.616413
-        Y: 1.80578
-        Z: -8.81091
+        X: 18.2729
+        Y: -3.74695
+        Z: -5.29142
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.774797
+      Pitch: 1.0748
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.10245
+      Yaw: 4.57754
     Saved: ~
 Window Geometry:
   Displays:

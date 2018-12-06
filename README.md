@@ -42,12 +42,19 @@ trajectory | nav_msgs/Path | Array of sequences of robot poses
 Usage
 ------
 
+	#optional: train a model from scratch
+	#select MCPNet as the network architecture (other options are pointnet,pointnet2,voxnet,sgpn)
+	#select Area 3 as validation set (Areas 1,2,4,5,6 as training set)
+	#model will be saved in models/mcpnet_model3.ckpt
+	python train.py --net mcpnet --area 3
+
 	#start the ROS node for incremental segmentation
 	#select Area 3 as the validation dataset
+	#select MCPNet as the network architecture
 	#use the flag --color to publish original color point cloud scans
-	#use the flag --instance to publish instance segmentation results
-	#use the flag --semantic to publish semantic segmentation results
-	python inc_seg.py --area 3
+	#use the flag --cluster to publish clustering results
+	#use the flag --classify to publish classification results
+	python inc_seg.py --net mcpnet --area 3
 	
 	#use RViz as a visualization tool
 	rviz -d inc_seg.rviz
@@ -62,10 +69,10 @@ RGB-mapped laser scanned point cloud
 
 ![screenshot1](results/screenshot1.png?raw=true)
 
-Instance segmentation results
+Clustering results
 
 ![screenshot2](results/screenshot2.png?raw=true)
 
-Semantic segmentation results
+Classification results
 
 ![screenshot3](results/screenshot3.png?raw=true)
