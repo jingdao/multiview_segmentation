@@ -12,12 +12,15 @@ import itertools
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, adjusted_mutual_info_score
 import scipy.stats
 import psutil
+import copy
 
 import roslib
 import rospy
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs import point_cloud2
 from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 import std_msgs
 
 robot_position = None
@@ -39,6 +42,8 @@ if '--cluster' in sys.argv:
 	mode='cluster'
 if '--classify' in sys.argv:
 	mode='classify'
+if '--boxes' in sys.argv:
+	mode='boxes'
 
 local_range = 2
 resolution = 0.1
@@ -68,6 +73,10 @@ numpy.random.seed(0)
 sample_state = numpy.random.RandomState(0)
 obj_color = {}
 
+box_marker = None
+text_marker = None
+previousMarkers = 0
+
 def publish_output(cloud):
 	header = std_msgs.msg.Header()
 	header.stamp = rospy.Time.now()
@@ -82,12 +91,77 @@ def publish_output(cloud):
 	msg = point_cloud2.create_cloud(header,fields, cloud)
 	pubOutput.publish(msg)
 
+def updateMarkers(idx, pcd, prediction):
+	global box_marker
+	if box_marker is None:
+		box_marker = Marker()
+		box_marker.header.frame_id = "/map";
+		box_marker.type = Marker.LINE_LIST;
+		box_marker.lifetime = rospy.Duration();
+		box_marker.color.a = 1.0;
+		box_marker.action = Marker.ADD;
+		box_marker.scale.x = 0.05;
+		box_marker.pose.orientation.w = 1.0;
+	marker = copy.copy(box_marker)
+	marker.header.stamp = rospy.Time.now();
+	marker.id = idx;
+	marker.color.r = class_to_color_rgb[prediction][0] / 255.0;
+	marker.color.g = class_to_color_rgb[prediction][1] / 255.0;
+	marker.color.b = class_to_color_rgb[prediction][2] / 255.0;
+	box = numpy.zeros((8,3))
+	box[[0,1,4,5],0] = min([p[0] for p in pcd])
+	box[[2,3,6,7],0] = max([p[0] for p in pcd])
+	box[[0,2,4,6],1] = min([p[1] for p in pcd])
+	box[[1,3,5,7],1] = max([p[1] for p in pcd])
+	box[[0,1,2,3],2] = min([p[2] for p in pcd])
+	box[[4,5,6,7],2] = max([p[2] for p in pcd])
+	p1 = Point(*box[0,:])
+	p2 = Point(*box[1,:])
+	p3 = Point(*box[2,:])
+	p4 = Point(*box[3,:])
+	p5 = Point(*box[4,:])
+	p6 = Point(*box[5,:])
+	p7 = Point(*box[6,:])
+	p8 = Point(*box[7,:])
+	marker.points = [p1,p2,p1,p3,p2,p4,p3,p4,p1,p5,p2,p6,p3,p7,p4,p8,p5,p6,p5,p7,p6,p8,p7,p8]
+	pubMarker.publish(marker);
+
+def deleteMarkers(idx):
+	marker = Marker()
+	marker.header.frame_id = "/map";
+	marker.header.stamp = rospy.Time.now();
+	marker.id = idx;
+	marker.action = Marker.DELETE;
+	pubMarker.publish(marker);
+
+def updateText(idx, pcd, prediction):
+	global text_marker
+	if text_marker is None:
+		text_marker = Marker()
+		text_marker.header.frame_id = "/map";
+		text_marker.type = Marker.TEXT_VIEW_FACING;
+		text_marker.action = Marker.ADD;
+		text_marker.pose.orientation.w = 1.0;
+		text_marker.scale.x = text_marker.scale.y = text_marker.scale.z = 0.5;
+		text_marker.color.a = 1.0;
+	marker = copy.copy(text_marker)
+	marker.id = idx;
+	marker.header.stamp = rospy.Time.now();
+	marker.pose.position.x = numpy.mean([p[0] for p in pcd])
+	marker.pose.position.y = numpy.mean([p[1] for p in pcd])
+	marker.pose.position.z = max([p[2] for p in pcd])
+	marker.text = classes[prediction];
+	marker.color.r = class_to_color_rgb[prediction][0] / 255.0;
+	marker.color.g = class_to_color_rgb[prediction][1] / 255.0;
+	marker.color.b = class_to_color_rgb[prediction][2] / 255.0;
+	pubMarker.publish(marker)
+
 def cloud_surround_callback(cloud):
-	global count_msg, obj_count
+	global count_msg, obj_count, previousMarkers
 	t = time.time()
 	pcd = []
 	for p in point_cloud2.read_points(cloud, field_names=("x","y","z","r","g","b","o","c"), skip_nans=True):
-		pcd.append(p)
+		pcd.append(p + (0,0))
 
 	if robot_position is None:
 		centroid = numpy.median(pcd[:,:2],axis=0)
@@ -96,6 +170,8 @@ def cloud_surround_callback(cloud):
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-centroid)**2, axis=1) < local_range * local_range
 	pcd = pcd[local_mask, :]
+	if len(pcd)==0:
+		return
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
 	pcd[:,:2] -= centroid
@@ -224,15 +300,6 @@ def cloud_surround_callback(cloud):
 			output_cloud[:,3:6] = (output_cloud[:,3:6]+0.5)*255
 			publish_output(output_cloud)
 		elif mode=='cluster':
-#			output_cloud = numpy.array([global_features[point_id_map[k]] for k in point_id_map])
-#			mask = numpy.ones(len(dt_id),dtype=bool)
-#			for c in clusters:
-#				if len(clusters[c]) < 10:
-#					mask[clusters[c]] = False
-#			output_cloud[:,3:6] = obj_color[[dt_id[point_id_map[k]] for k in point_id_map],:]
-#			mask = [mask[point_id_map[k]] for k in point_id_map]
-#			output_cloud = output_cloud[mask, :]
-#			publish_output(output_cloud)
 			output_cloud = numpy.array(point_orig_list[-len(update_list):])
 			for i in range(len(update_list)):
 				obj_id = predicted_obj_id[-len(update_list)+i]
@@ -248,6 +315,23 @@ def cloud_surround_callback(cloud):
 					header.frame_id = '/map'
 					msg = point_cloud2.create_cloud_xyz32(header,global_objects[i])
 					pubObjects[i].publish(msg)
+		elif mode=='boxes':
+			currentMarkers = 0
+			for i in clusters:
+				if len(clusters[i]) > 50:
+					pcd = [point_orig_list[c] for c in clusters[i]]
+					cls_id = [predicted_cls_id[c] for c in clusters[i]]
+					prediction = scipy.stats.mode(cls_id)[0][0]
+					if prediction==0:
+						continue
+					updateMarkers(currentMarkers, pcd, prediction)
+					currentMarkers += 1
+					updateText(currentMarkers, pcd, prediction)
+					currentMarkers += 1
+			for i in range(currentMarkers, previousMarkers):
+				deleteMarkers(i)
+			previousMarkers = currentMarkers
+
 
 	t = time.time() - t
 	comp_time.append(t)
@@ -265,7 +349,7 @@ sess = tf.Session(config=config)
 
 if net_type=='pointnet':
 	net = PointNet(batch_size, feature_size, NUM_CLASSES)
-if net_type=='pointnet2':
+elif net_type=='pointnet2':
 	net = PointNet2(batch_size, feature_size, NUM_CLASSES)
 elif net_type=='voxnet':
 	net = VoxNet(batch_size, feature_size, NUM_CLASSES)
@@ -277,7 +361,7 @@ elif net_type=='mcpnet_simple':
 elif net_type=='mcpnet':
 	net = MCPNet(batch_size, num_neighbors, feature_size, hidden_size, embedding_size, NUM_CLASSES)
 else:
-	print('Invalid network type')
+	print('Invalid network type %s'%net_type)
 	sys.exit(1)
 saver = tf.train.Saver()
 saver.restore(sess, MODEL_PATH)
@@ -287,6 +371,7 @@ rospy.init_node('inc_seg')
 rospy.Subscriber('laser_cloud_surround',PointCloud2,cloud_surround_callback)
 rospy.Subscriber('slam_out_pose',PoseStamped,pose_callback)
 pubOutput = rospy.Publisher('output_cloud', PointCloud2, queue_size=1)
+pubMarker = rospy.Publisher('markers', Marker, queue_size=10)
 pubObjects = []
 for c in classes:
 	p = rospy.Publisher(c, PointCloud2, queue_size=1)
@@ -296,9 +381,51 @@ rospy.spin()
 #calculate accuracy
 def calculate_accuracy():
 	stats = {}
-	stats['all'] = {'tp':0, 'fp':0, 'fn':0} 
+	stats['all'] = {'tp':0, 'fp':0, 'fn':0, 'btp':0, 'bfp':0, 'bfn':0} 
 	for c in classes:
-		stats[c] = {'tp':0, 'fp':0, 'fn':0} 
+		stats[c] = {'tp':0, 'fp':0, 'fn':0, 'btp':0, 'bfp':0, 'bfn':0} 
+
+	gt_boxes = []
+	predicted_boxes = []
+	gt_box_label = []
+	predicted_box_label = []
+	for obj_id in set(gt_obj_id):
+		mask = gt_obj_id==obj_id
+		inliers = point_orig_list[mask,:3]
+		prediction = gt_cls_id[mask][0]
+		gt_boxes.append(mask)
+		gt_box_label.append(prediction)
+	for obj_id in set(predicted_obj_id):
+		mask = predicted_obj_id==obj_id
+		if numpy.sum(mask) > 50:
+			inliers = point_orig_list[mask,:3]
+			prediction = scipy.stats.mode(predicted_cls_id[mask])[0][0]
+			predicted_boxes.append(mask)
+			predicted_box_label.append(prediction)
+	predicted_boxes = numpy.array(predicted_boxes)
+	gt_boxes = numpy.array(gt_boxes)
+	matched = numpy.zeros(len(predicted_boxes), dtype=bool)
+	print('%d/%d boxes'%(len(predicted_boxes),len(gt_boxes)))
+	for i in range(len(gt_boxes)):
+		same_cls = gt_box_label[i] == predicted_box_label
+		if numpy.sum(same_cls)==0:
+			stats[classes[gt_box_label[i]]]['bfn'] += 1
+			stats['all']['bfn'] += 1
+			continue
+		intersection = numpy.sum(numpy.logical_and(gt_boxes[i], predicted_boxes[same_cls]), axis=1)
+		IOU = intersection / (1.0 * numpy.sum(gt_boxes[i]) + numpy.sum(predicted_boxes[same_cls],axis=1) - intersection)
+		if IOU.max() > 0.5:
+			matched[numpy.nonzero(same_cls)[0][numpy.argmax(IOU)]] = True
+			stats[classes[gt_box_label[i]]]['btp'] += 1
+			stats['all']['btp'] += 1
+		else:
+			stats[classes[gt_box_label[i]]]['bfn'] += 1
+			stats['all']['bfn'] += 1
+	for i in range(len(predicted_boxes)):
+		if not matched[i]:
+			stats[classes[predicted_box_label[i]]]['bfp'] += 1
+			stats['all']['bfp'] += 1
+
 	for g in range(len(predicted_cls_id)):
 		if gt_cls_id[g] == predicted_cls_id[g]:
 			stats[classes[int(gt_cls_id[g])]]['tp'] += 1
@@ -311,8 +438,10 @@ def calculate_accuracy():
 
 	prec_agg = []
 	recl_agg = []
+	bprec_agg = []
+	brecl_agg = []
 	iou_agg = []
-	print("%10s %6s %6s %6s %5s %5s %5s"%('CLASS','TP','FP','FN','PREC','RECL','IOU'))
+	print("%10s %6s %6s %6s %5s %5s %5s %3s %3s %3s %5s %5s"%('CLASS','TP','FP','FN','PREC','RECL','IOU','BTP','BFP','BFN','PREC','RECL'))
 	for c in sorted(stats.keys()):
 		try:
 			stats[c]['pr'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'])
@@ -326,14 +455,30 @@ def calculate_accuracy():
 			stats[c]['IOU'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'] + stats[c]['fn'])
 		except ZeroDivisionError:
 			stats[c]['IOU'] = 0
+		try:
+			stats[c]['bpr'] = 1.0 * stats[c]['btp'] / (stats[c]['btp'] + stats[c]['bfp'])
+		except ZeroDivisionError:
+			stats[c]['bpr'] = 0
+		try:
+			stats[c]['brc'] = 1.0 * stats[c]['btp'] / (stats[c]['btp'] + stats[c]['bfn'])
+		except ZeroDivisionError:
+			stats[c]['brc'] = 0
 		if c not in ['all']:
-			print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%(c,stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
+			print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%(c,
+				stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU'],
+				stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],stats[c]['bpr'],stats[c]['brc']))
 			prec_agg.append(stats[c]['pr'])
 			recl_agg.append(stats[c]['rc'])
 			iou_agg.append(stats[c]['IOU'])
+			bprec_agg.append(stats[c]['bpr'])
+			brecl_agg.append(stats[c]['brc'])
 	c = 'all'
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%('all',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%('avg',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg)))
+	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%('all',
+		stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU'],
+		stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],stats[c]['bpr'],stats[c]['brc']))
+	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%('avg',
+		stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg),
+		stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],numpy.mean(bprec_agg),numpy.mean(brecl_agg)))
 
 					
 print("Avg Comp Time: %.3f" % numpy.mean(comp_time))
@@ -344,5 +489,10 @@ nmi = normalized_mutual_info_score(gt_obj_id, predicted_obj_id)
 ami = adjusted_mutual_info_score(gt_obj_id, predicted_obj_id)
 ars = adjusted_rand_score(gt_obj_id, predicted_obj_id)
 print("NMI: %.3f AMI: %.3f ARS: %.3f %d/%d clusters"% (nmi,ami,ars,len(numpy.unique(predicted_obj_id)),len(numpy.unique(gt_obj_id))))
+predicted_obj_id = numpy.array(predicted_obj_id)
+gt_obj_id = numpy.array(gt_obj_id)
+predicted_cls_id = numpy.array(predicted_cls_id)
+gt_cls_id = numpy.array(gt_cls_id)
+point_orig_list = numpy.array(point_orig_list)
 calculate_accuracy()
 

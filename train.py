@@ -241,6 +241,12 @@ for epoch in range(max_epoch):
 	print("Epoch %d loss %.2f cls %.3f acc %.2f bg %.2f wg %.2f F %.2f"%(epoch,numpy.mean(loss_arr),numpy.mean(cls_arr),numpy.mean(acc_arr),numpy.mean(bg_arr),numpy.mean(wg_arr),numpy.mean(f_arr)))
 
 	if epoch%10==9:
+		loss_arr = []
+		cls_arr = []
+		acc_arr = []
+		bg_arr = []
+		wg_arr = []
+		f_arr = []
 		for i in random.sample(xrange(len(val_points)), len(val_points)):
 			idx = get_even_sampling(val_obj_id[i], batch_size,samples_per_instance)
 			input_points = val_points[i][idx, :]
