@@ -1,8 +1,8 @@
 Dynamic Laser Scanning Dataset for Multi-view Incremental Segmentation
 ========
 
-Supplementary material (dynamic laser scanning dataset) for the ICRA submission
-*Multi-view Incremental Segmentation of 3D Point Clouds*.
+Supplementary material (dynamic laser scanning dataset) for the RAL paper
+*Multi-view Incremental Segmentation of 3D Point Clouds for Mobile Robots*.
 
 Prerequisites
 -----
@@ -61,6 +61,23 @@ Usage
 	
 	#publish the laser scan data from a ROS bag file
 	rosbag play data/area3.bag
+	
+Reference
+--------
+
+	@article{Chen2019,
+		author = {Chen,Jingdao and Cho, Yong K. and Kira, Zsolt},
+		title = {Multi-view Incremental Segmentation of 3D Point Clouds for Mobile Robots},
+		journal = {IEEE Robotics and Automation Letters},
+		year = {2019},
+	}
+	
+Links
+-----
+
+[IEEE Robotics and Automation Letters published version](https://ieeexplore.ieee.org/document/8624392)
+
+[arxiv preprint version](https://arxiv.org/abs/1902.06768)
 	
 Screenshots
 -----
