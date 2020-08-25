@@ -482,7 +482,7 @@ def calculate_accuracy():
 
 					
 print("Avg Comp Time: %.3f" % numpy.mean(comp_time))
-print("CPU Mem: %.2f" % (psutil.Process(os.getpid()).get_memory_info()[0] / 1.0e9))
+print("CPU Mem: %.2f" % (psutil.Process(os.getpid()).memory_info()[0] / 1.0e9))
 #sys.exit(1)
 print("Computing stats, please wait ...")
 nmi = normalized_mutual_info_score(gt_obj_id, predicted_obj_id)

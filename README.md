@@ -61,6 +61,16 @@ Usage
 	
 	#publish the laser scan data from a ROS bag file
 	rosbag play data/area3.bag
+
+Evaluation
+---------
+
+    #calculate evaluation metrics after replaying from ROS bag files
+    for i in 1 2 3 4 5 6
+    do
+        python -u inc_seg_replay.py --net mcpnet --area $i >> results/result_mcpnet.txt
+    done
+
 	
 Reference
 --------
