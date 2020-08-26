@@ -71,6 +71,14 @@ Evaluation
         python -u inc_seg_replay.py --net mcpnet --area $i >> results/result_mcpnet.txt
     done
 
+Evaluation for offline methods
+---------
+
+    #calculate evaluation metrics using offline PointNet
+    for i in 1 2 3 4 5 6
+    do
+        python -u offline_seg.py --net pointnet --area $i >> results/result_offline_pointnet.txt
+    done
 	
 Reference
 --------

@@ -1,0 +1,36 @@
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.727 AMI: 0.576 ARS: 0.124 HOM: 0.618 COM: 0.855 VMS: 0.718 1512/1563 clusters
+all 0 0 0 0.662 0 0.495
+avg 0 0 0 0.596 0 0.340
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.776 AMI: 0.669 ARS: 0.391 HOM: 0.697 COM: 0.865 VMS: 0.772 1103/1229 clusters
+all 0 0 0 0.773 0 0.631
+avg 0 0 0 0.407 0 0.316
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.745 AMI: 0.622 ARS: 0.168 HOM: 0.654 COM: 0.848 VMS: 0.738 701/737 clusters
+all 0 0 0 0.699 0 0.538
+avg 0 0 0 0.585 0 0.343
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.689 AMI: 0.528 ARS: 0.050 HOM: 0.575 COM: 0.825 VMS: 0.678 1550/1553 clusters
+all 0 0 0 0.652 0 0.484
+avg 0 0 0 0.412 0 0.290
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.676 AMI: 0.505 ARS: 0.048 HOM: 0.547 COM: 0.835 VMS: 0.661 2600/2227 clusters
+all 0 0 0 0.674 0 0.508
+avg 0 0 0 0.422 0 0.289
+Avg Comp Time: 0
+CPU Mem: 0
+GPU Mem: 0
+NMI: 0.749 AMI: 0.616 ARS: 0.112 HOM: 0.660 COM: 0.849 VMS: 0.743 1684/1655 clusters
+all 0 0 0 0.637 0 0.468
+avg 0 0 0 0.493 0 0.337

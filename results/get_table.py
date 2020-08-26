@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import numpy
 import os
-nets = ['normal','pointnet','pointnet2','sgpn','voxnet','mcpnet_simple','mcpnet']
+nets = ['normal','pointnet','pointnet2','sgpn','voxnet','mcpnet_simple','mcpnet','offline_pointnet', 'offline_pointnet2']
 table1 = []
 table2 = []
 table3 = []
@@ -13,7 +13,9 @@ display_name = {
 	'voxnet' : 'VoxNet',
 	'sgpn': 'SGPN',
 	'mcpnet_simple': 'Proposed',
-	'mcpnet': 'Proposed + MCP'
+	'mcpnet': 'Proposed + MCP',
+    'offline_pointnet': "Offline PointNet",
+    'offline_pointnet2': "Offline PointNet++"
 }
 
 for n in nets:
