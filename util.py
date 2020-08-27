@@ -178,3 +178,13 @@ def get_obj_id_metrics(gt_obj_id, predicted_obj_id):
         prc = rcl = mean_iou = numpy.nan
 
     return nmi, ami, ars, prc, rcl, mean_iou, hom, com, vms 
+
+def downsample(cloud, resolution=0.1):
+    voxel_set = set()
+    output_cloud = []
+    voxels = [tuple(k) for k in numpy.round(cloud[:, :3]/resolution).astype(int)]
+    for i in range(len(voxels)):
+        if not voxels[i] in voxel_set:
+            output_cloud.append(cloud[i])
+            voxel_set.add(voxels[i])
+    return numpy.array(output_cloud) 

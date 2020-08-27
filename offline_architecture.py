@@ -13,9 +13,9 @@ from tf_grouping import query_ball_point, group_point, knn_point
 from tf_interpolate import three_nn, three_interpolate
 
 BASE_LEARNING_RATE = 2e-4
-NUM_FEATURE_CHANNELS = [64,64,128,512]
+NUM_FEATURE_CHANNELS = [64,64,64,128,1024]
 NUM_CONV_LAYERS = len(NUM_FEATURE_CHANNELS)
-NUM_FC_CHANNELS = [512]
+NUM_FC_CHANNELS = [512,256]
 NUM_FC_LAYERS = len(NUM_FC_CHANNELS)
 class PointNet():
 	def __init__(self,batch_size,num_point,num_class):
@@ -163,7 +163,8 @@ class PointNet2():
 		self.labels_pl = tf.placeholder(tf.int32, shape=(batch_size, num_point))
 		self.is_training_pl = tf.placeholder(tf.bool, shape=())
 		l0_xyz = self.pointclouds_pl[:,:,:3]
-		l0_points = None
+#		l0_points = None
+		l0_points = self.pointclouds_pl[:,:,3:]
 
 		# Layer 1
 		l1_xyz, l1_points, l1_indices = pointnet_sa_module(l0_xyz, l0_points, npoint=1024, radius=0.1, nsample=32, mlp=[32,32,64], mlp2=None, group_all=False, is_training=self.is_training_pl, bn_decay=0, scope='layer1')

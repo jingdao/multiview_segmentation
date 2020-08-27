@@ -23,7 +23,7 @@ if '--viz' in sys.argv:
 	save_viz = True
 
 NUM_CLASSES = len(classes)
-NUM_POINT = 1024
+NUM_POINT = 2048
 resolution = 0.1
 local_range = 2
 sample_state = numpy.random.RandomState(0)
@@ -93,8 +93,9 @@ else:
     config.allow_soft_placement = True
     config.log_device_placement = False
     sess = tf.Session(config=config)
-    base_path = '/home/jd/Desktop/learn_region_grow/models'
-    MODEL_PATH = '%s/%s_model%d.ckpt' % (base_path, net_type, VAL_AREA)
+#    base_path = '/home/jd/Desktop/learn_region_grow/models'
+    base_path = 'models'
+    MODEL_PATH = '%s/offline_%s_model%d.ckpt' % (base_path, net_type, VAL_AREA)
     if net_type=='pointnet':
         net = PointNet(1,NUM_POINT,len(classes)) 
     elif net_type=='pointnet2':
