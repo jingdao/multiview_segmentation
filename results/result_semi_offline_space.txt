@@ -1,0 +1,42 @@
+Restored from models/offline_pointnet_model1.ckpt
+Avg Comp Time: 0.048
+CPU Mem: 1.58
+GPU Mem: 643.7
+NMI: 0.842 AMI: 0.800 ARS: 0.524 HOM: 0.843 COM: 0.840 VMS: 0.842 7074/1191 clusters
+all 0 0 0 0.665 0 0.498
+avg 0 0 0 0.551 0 0.348
+Restored from models/offline_pointnet_model2.ckpt
+Avg Comp Time: 0.037
+CPU Mem: 1.54
+GPU Mem: 642.9
+NMI: 0.823 AMI: 0.779 ARS: 0.540 HOM: 0.835 COM: 0.812 VMS: 0.823 4608/755 clusters
+all 0 0 0 0.706 0 0.546
+avg 0 0 0 0.353 0 0.268
+Restored from models/offline_pointnet_model3.ckpt
+Avg Comp Time: 0.031
+CPU Mem: 1.51
+GPU Mem: 641.9
+NMI: 0.804 AMI: 0.740 ARS: 0.366 HOM: 0.778 COM: 0.831 VMS: 0.804 3388/600 clusters
+all 0 0 0 0.691 0 0.528
+avg 0 0 0 0.531 0 0.323
+Restored from models/offline_pointnet_model4.ckpt
+Avg Comp Time: 0.054
+CPU Mem: 1.61
+GPU Mem: 641.3
+NMI: 0.772 AMI: 0.661 ARS: 0.086 HOM: 0.725 COM: 0.822 VMS: 0.770 9180/1357 clusters
+all 0 0 0 0.665 0 0.498
+avg 0 0 0 0.382 0 0.278
+Restored from models/offline_pointnet_model5.ckpt
+Avg Comp Time: 0.083
+CPU Mem: 1.73
+GPU Mem: 642.9
+NMI: 0.779 AMI: 0.688 ARS: 0.113 HOM: 0.746 COM: 0.813 VMS: 0.778 16140/1874 clusters
+all 0 0 0 0.647 0 0.478
+avg 0 0 0 0.404 0 0.250
+Restored from models/offline_pointnet_model6.ckpt
+Avg Comp Time: 0.053
+CPU Mem: 1.60
+GPU Mem: 642.3
+NMI: 0.834 AMI: 0.780 ARS: 0.328 HOM: 0.829 COM: 0.839 VMS: 0.834 9045/1411 clusters
+all 0 0 0 0.608 0 0.436
+avg 0 0 0 0.501 0 0.298

@@ -1,36 +1,56 @@
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.727 AMI: 0.576 ARS: 0.124 HOM: 0.618 COM: 0.855 VMS: 0.718 1512/1563 clusters
-all 0 0 0 0.662 0 0.495
-avg 0 0 0 0.596 0 0.340
+NMI: 0.788 AMI: 0.675 ARS: 0.165 HOM: 0.715 COM: 0.868 VMS: 0.784 1725/1563 clusters
+all 0 0 0 0.715 0 0.557
+avg 0 0 0 0.613 0 0.454
+('point_orig_list', (304842, 6))
+Restored from models/offline_pointnet_model2.ckpt
+Performing inference on 1034 grid sets...
+Calculating connected components from 2326310 edges 304842 vertices...
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.776 AMI: 0.669 ARS: 0.391 HOM: 0.697 COM: 0.865 VMS: 0.772 1103/1229 clusters
-all 0 0 0 0.773 0 0.631
-avg 0 0 0 0.407 0 0.316
+NMI: 0.788 AMI: 0.689 ARS: 0.419 HOM: 0.717 COM: 0.865 VMS: 0.784 1112/1229 clusters
+all 0 0 0 0.778 0 0.637
+avg 0 0 0 0.419 0 0.326
+('point_orig_list', (170340, 6))
+Restored from models/offline_pointnet_model3.ckpt
+Performing inference on 491 grid sets...
+Calculating connected components from 1306436 edges 170340 vertices...
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.745 AMI: 0.622 ARS: 0.168 HOM: 0.654 COM: 0.848 VMS: 0.738 701/737 clusters
-all 0 0 0 0.699 0 0.538
-avg 0 0 0 0.585 0 0.343
+NMI: 0.762 AMI: 0.649 ARS: 0.181 HOM: 0.681 COM: 0.852 VMS: 0.757 711/737 clusters
+all 0 0 0 0.712 0 0.553
+avg 0 0 0 0.564 0 0.380
+('point_orig_list', (405324, 6))
+Restored from models/offline_pointnet_model4.ckpt
+Performing inference on 1063 grid sets...
+Calculating connected components from 3168904 edges 405324 vertices...
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.689 AMI: 0.528 ARS: 0.050 HOM: 0.575 COM: 0.825 VMS: 0.678 1550/1553 clusters
-all 0 0 0 0.652 0 0.484
-avg 0 0 0 0.412 0 0.290
+NMI: 0.700 AMI: 0.544 ARS: 0.055 HOM: 0.590 COM: 0.829 VMS: 0.690 1563/1553 clusters
+all 0 0 0 0.676 0 0.510
+avg 0 0 0 0.462 0 0.320
+('point_orig_list', (753048, 6))
+Restored from models/offline_pointnet_model5.ckpt
+Performing inference on 1957 grid sets...
+Calculating connected components from 5895184 edges 753048 vertices...
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.676 AMI: 0.505 ARS: 0.048 HOM: 0.547 COM: 0.835 VMS: 0.661 2600/2227 clusters
-all 0 0 0 0.674 0 0.508
-avg 0 0 0 0.422 0 0.289
+NMI: 0.707 AMI: 0.555 ARS: 0.053 HOM: 0.598 COM: 0.835 VMS: 0.697 2722/2227 clusters
+all 0 0 0 0.669 0 0.503
+avg 0 0 0 0.462 0 0.304
+('point_orig_list', (405513, 6))
+Restored from models/offline_pointnet_model6.ckpt
+Performing inference on 1023 grid sets...
+Calculating connected components from 3181354 edges 405513 vertices...
 Avg Comp Time: 0
 CPU Mem: 0
 GPU Mem: 0
-NMI: 0.749 AMI: 0.616 ARS: 0.112 HOM: 0.660 COM: 0.849 VMS: 0.743 1684/1655 clusters
-all 0 0 0 0.637 0 0.468
-avg 0 0 0 0.493 0 0.337
+NMI: 0.765 AMI: 0.642 ARS: 0.123 HOM: 0.687 COM: 0.851 VMS: 0.761 1805/1655 clusters
+all 0 0 0 0.651 0 0.482
+avg 0 0 0 0.571 0 0.388

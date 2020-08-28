@@ -86,6 +86,12 @@ Evaluation for offline methods
         python -u offline_seg.py --net pointnet --area $i >> results/result_offline_pointnet.txt
     done
 
+    #calculate evaluation metrics using semi-offline PointNet
+    for i in 1 2 3 4 5 6
+    do
+        python -u semi_offline_seg.py --mode space --area $i >> results/result_semi_offline_space.txt
+    done
+
 Reference
 --------
 

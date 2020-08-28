@@ -159,7 +159,6 @@ def get_obj_id_metrics(gt_obj_id, predicted_obj_id):
         dt_match = numpy.zeros(predicted_obj_id.max(), dtype=bool)
         mean_iou = []
         for k in range(len(unique_id)):
-            print(k, len(unique_id))
             i = unique_id[numpy.argsort(count)][::-1][k]
             best_iou = 0
             for j in range(1, predicted_obj_id.max()+1):
