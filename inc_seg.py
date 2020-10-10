@@ -71,7 +71,7 @@ obj_count = 0
 comp_time = []
 numpy.random.seed(0)
 sample_state = numpy.random.RandomState(0)
-obj_color = {}
+obj_color = {0:[100,100,100]}
 
 box_marker = None
 text_marker = None
@@ -303,6 +303,7 @@ def cloud_surround_callback(cloud):
 			output_cloud = numpy.array(point_orig_list[-len(update_list):])
 			for i in range(len(update_list)):
 				obj_id = predicted_obj_id[-len(update_list)+i]
+#				obj_id = gt_obj_id[-len(update_list)+i]
 				if not obj_id in obj_color:
 					obj_color[obj_id] = numpy.random.randint(0,255,3)
 				output_cloud[i,3:6] = obj_color[obj_id]
