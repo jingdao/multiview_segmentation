@@ -79,6 +79,11 @@ Evaluation for offline methods
         python -u train_offline.py --net pointnet --area $i > results/log_train_offline_pointnet_area$i.txt
     done
 
+	#calculate evaluation metrics using offline PointNet (with room segmentation)
+    for i in 1 2 3 4 5 6
+    do
+        python -u test_offline.py --net pointnet --area $i >> results/result_offline_room_pointnet.txt
+    done
 
     #calculate evaluation metrics using offline PointNet
     for i in 1 2 3 4 5 6

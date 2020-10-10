@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import numpy
 import os
-nets = ['normal','pointnet','pointnet2','sgpn','voxnet','mcpnet_simple','mcpnet','offline_pointnet', 'offline_pointnet2', 'semi_offline_time', 'semi_offline_space']
+nets = ['normal','pointnet','pointnet2','sgpn','voxnet','mcpnet_simple','mcpnet','offline_room_pointnet', 'offline_room_pointnet2', 'offline_pointnet', 'offline_pointnet2', 'semi_offline_time', 'semi_offline_space']
 table1 = []
 table2 = []
 table3 = []
@@ -14,6 +14,8 @@ display_name = {
 	'sgpn': 'SGPN',
 	'mcpnet_simple': 'Proposed',
 	'mcpnet': 'Proposed + MCP',
+    'offline_room_pointnet': "Offline+Room PointNet",
+    'offline_room_pointnet2': "Offline+Room PointNet++",
     'offline_pointnet': "Offline PointNet",
     'offline_pointnet2': "Offline PointNet++",
 	'semi_offline_time': "Offline PointNet + Time Context",
