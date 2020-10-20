@@ -95,18 +95,23 @@ if velodyne_to_faro is not None:
     bag = rosbag.Bag('data/guardian_centers_%s.bag' % AREA, 'w')
 
 #get ground truth instance labels
-pkl_path = 'viz/gt_map.pkl'
+pkl_path = 'viz/gt_obj_map.pkl'
+pkl_path2 = 'viz/gt_cls_map.pkl'
 if os.path.exists(pkl_path):
-    gt_map = pickle.load(open(pkl_path, 'rb'))
+    gt_obj_map = pickle.load(open(pkl_path, 'rb'))
+    gt_cls_map = pickle.load(open(pkl_path2, 'rb'))
 else:
     gt_labels = numpy.load('data/guardian_centers_concrete/processed/guardian_centers_concrete.npy')
-    gt_map = {}
+    gt_obj_map = {}
+    gt_cls_map = {}
     gt_voxels = [tuple(p) for p in numpy.round(gt_labels[:, :3] / label_resolution).astype(int)]
     for i in range(len(gt_voxels)):
-        if not gt_voxels[i] in gt_map:
-            gt_map[gt_voxels[i]] = gt_labels[i, 6]
-    pickle.dump(gt_map, open(pkl_path, 'wb'))
-print('Loaded gt_map', len(gt_map))
+        if not gt_voxels[i] in gt_obj_map:
+            gt_obj_map[gt_voxels[i]] = gt_labels[i, 6]
+            gt_cls_map[gt_voxels[i]] = gt_labels[i, 7]
+    pickle.dump(gt_obj_map, open(pkl_path, 'wb'))
+    pickle.dump(gt_cls_map, open(pkl_path2, 'wb'))
+print('Loaded gt_map', len(gt_obj_map), len(gt_cls_map))
 instance_set = set()
 
 def process_cloud(msg):
@@ -166,18 +171,21 @@ def process_cloud(msg):
 
             #get instance labels
             instance_labels = numpy.zeros(len(pcd))
+            class_labels = numpy.zeros(len(pcd))
             pcd_voxels = [tuple(p) for p in numpy.round(pcd[:, :3] / label_resolution).astype(int)]
             for i in range(len(pcd_voxels)):
                 k = pcd_voxels[i]
-                if k in gt_map:
-                    instance_labels[i] = gt_map[k]
-                    instance_set.add(gt_map[k])
+                if k in gt_obj_map:
+                    instance_labels[i] = gt_obj_map[k]
+                    class_labels[i] = gt_cls_map[k]
+                    instance_set.add(gt_obj_map[k])
                     continue
                 for offset in itertools.product(range(-1,2),range(-1,2),range(-1,2)):
                     kk = (k[0]+offset[0], k[1]+offset[1], k[2]+offset[2])
-                    if kk in gt_map:
-                        instance_labels[i] = gt_map[kk]
-                        instance_set.add(gt_map[kk])
+                    if kk in gt_obj_map:
+                        instance_labels[i] = gt_obj_map[kk]
+                        class_labels[i] = gt_cls_map[kk]
+                        instance_set.add(gt_obj_map[kk])
                         break
 
             #apply offset for visualization
@@ -226,6 +234,7 @@ def process_cloud(msg):
             pcd_with_labels[:, :3] = pcd
             pcd_with_labels[:, 3:6] = 255
             pcd_with_labels[:, 6] = instance_labels
+            pcd_with_labels[:, 7] = class_labels
             pcd_with_labels = point_cloud2.create_cloud(msg.header,fields, pcd_with_labels)
             bag.write('laser_cloud_surround',pcd_with_labels,t=t)
 

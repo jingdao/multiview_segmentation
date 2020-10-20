@@ -16,7 +16,7 @@ from geometry_msgs.msg import PoseStamped
 import std_msgs
 import rosbag
 
-local_range = 10
+local_range = 20
 resolution = 0.1
 normal_resolution = 0.3
 threshold = 0.995
@@ -57,6 +57,9 @@ comp_time = []
 numpy.random.seed(0)
 sample_state = numpy.random.RandomState(0)
 obj_color = {0:[100,100,100]}
+cls_color = {0:[100,100,100]}
+cls_color = numpy.random.randint(0, 256, (17, 3))
+cls_color[0] = [100,100,100]
 
 def publish_output(cloud):
 	header = std_msgs.msg.Header()
@@ -199,6 +202,8 @@ def cloud_surround_callback(cloud):
                     if not obj_id in obj_color:
                         obj_color[obj_id] = numpy.random.randint(0,255,3)
                     output_cloud[i,3:6] = obj_color[obj_id]
+                elif viz=='cls':
+                    output_cloud[i,3:6] = cls_color[gt_cls_id[-len(update_list)+i]]
                 elif viz=='normals':
                     n = normals[-len(update_list)+i]
                     if n is None:
