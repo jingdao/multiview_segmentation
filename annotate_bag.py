@@ -12,6 +12,7 @@ from util import savePLY, downsample
 import rosbag
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav_msgs.msg import Path
+import sys
 import os
 import pickle
 import itertools
@@ -26,26 +27,28 @@ previous_time = None
 
 downsample_resolution = 0.1
 label_resolution = 0.2
-start_time = 45
+start_time = 0
 end_time = numpy.inf
 subsample = 5
 
-#velodyne_to_faro = None
-#velodyne_to_faro = numpy.array([
-#    [0.883, 0.466, -0.052, 206.736],
-#    [-0.468, 0.880, -0.077, -5.338],
-#    [0.010, 0.093, 0.996, -0.122],
-#    [0.000, 0.000, 0.000, 1.000],
-#])
-velodyne_to_faro = numpy.array([
-    [0.887, 0.459, -0.054, 206.789],
-    [-0.461, 0.887, -0.035, -5.584],
-    [0.032, 0.056, 0.998, -0.154],
-    [0.000, 0.000, 0.000, 1.000],
-])
+AREA = '7_0'
+for i in range(len(sys.argv)-1):
+	if sys.argv[i]=='--area':
+		AREA = sys.argv[i+1]
+
+if AREA=='7_0':
+    velodyne_to_faro = numpy.array([
+        [0.887, 0.459, -0.054, 206.789],
+        [-0.461, 0.887, -0.035, -5.584],
+        [0.032, 0.056, 0.998, -0.154],
+        [0.000, 0.000, 0.000, 1.000],
+    ])
+    start_time = 45
+else:
+    velodyne_to_faro = None
 faro_offset = numpy.array([234.40, -8.49, 0])
 if velodyne_to_faro is not None:
-    bag = rosbag.Bag('data/guardian_centers_7_0.bag', 'w')
+    bag = rosbag.Bag('data/guardian_centers_%s.bag' % AREA, 'w')
 
 #get ground truth instance labels
 pkl_path = 'viz/gt_map.pkl'
@@ -64,9 +67,10 @@ instance_set = set()
 
 def process_cloud(msg):
     global init_time, count_msg, previous_time
-    count_msg += 1
-    if count_msg % subsample != 1:
+    if count_msg % subsample != 0:
+        count_msg += 1
         return
+    count_msg += 1
     if init_time is None:
         init_time = msg.header.stamp.to_sec()
         print('init_time', init_time)
@@ -115,8 +119,8 @@ def process_cloud(msg):
             pcd = velodyne_to_faro[:3, :3].dot(pcd.T).T + velodyne_to_faro[:3, 3]
 
             #get instance labels
-            pcd_voxels = [tuple(p) for p in numpy.round(pcd[:, :3] / label_resolution).astype(int)]
             instance_labels = numpy.zeros(len(pcd))
+            pcd_voxels = [tuple(p) for p in numpy.round(pcd[:, :3] / label_resolution).astype(int)]
             for i in range(len(pcd_voxels)):
                 k = pcd_voxels[i]
                 if k in gt_map:
