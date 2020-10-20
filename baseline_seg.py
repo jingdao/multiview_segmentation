@@ -19,7 +19,7 @@ import rosbag
 local_range = 10
 resolution = 0.1
 normal_resolution = 0.3
-threshold = 0.98
+threshold = 0.995
 margin = 2 #voxel margin for clustering
 mode = 'euclidean'
 #mode = 'normals'
@@ -37,6 +37,8 @@ for i in range(len(sys.argv)-1):
         viz = sys.argv[i+1]
     elif sys.argv[i]=='--area':
         AREA = sys.argv[i+1]
+    elif sys.argv[i]=='--range':
+        local_range = float(sys.argv[i+1])
 
 point_id_map = {}
 accA = {}
@@ -207,7 +209,7 @@ def cloud_surround_callback(cloud):
 
     t = time.time() - t
     comp_time.append(t)
-#    print('Scan #%3d: %5d/%5d/%7d points obj_count %d/%d time %.3f'%(count_msg, len(update_list), numpy.sum(local_mask), len(point_id_map), len(clusters), obj_count, t))
+    print('Scan #%3d: %5d/%5d/%7d points obj_count %d/%d time %.3f'%(count_msg, len(update_list), numpy.sum(local_mask), len(point_id_map), len(clusters), obj_count, t))
     count_msg += 1
 	
 if AREA is None:
@@ -229,8 +231,9 @@ else:
 
 #ignore clutter in evaluation
 valid_mask = numpy.array(gt_obj_id) > 0
+predicted_obj_id = numpy.array(predicted_obj_id)
 gt_obj_id = numpy.array(gt_obj_id)[valid_mask]
-predicted_obj_id = numpy.array(predicted_obj_id)[valid_mask]
+predicted_obj_id = predicted_obj_id[valid_mask]
 point_orig_list = numpy.array(point_orig_list)[valid_mask]
 normals = numpy.array([[0.5,0.5,0.5] if n is None else n for n in normals])[valid_mask]
 
@@ -241,7 +244,12 @@ savePCD('viz/area%s_gt_obj_id.pcd' % AREA, point_orig_list)
 obj_color = numpy.random.randint(0,255,(max(predicted_obj_id)+1,3))
 obj_color[0] = [100, 100, 100]
 point_orig_list[:,3:6] = obj_color[predicted_obj_id, :]
-savePCD('viz/%s_area%s_predicted_obj_id.pcd' % (mode, AREA), point_orig_list)
+valid_mask = numpy.ones(len(predicted_obj_id), dtype=bool)
+for i in set(predicted_obj_id):
+    cluster_mask = predicted_obj_id==i
+    if numpy.sum(cluster_mask) < 10:
+        valid_mask[cluster_mask] = False
+savePCD('viz/%s_area%s_predicted_obj_id.pcd' % (mode, AREA), point_orig_list[valid_mask])
 #point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in gt_cls_id]
 #savePCD('viz/area%s_gt_cls_id.pcd' % AREA, point_orig_list)
 #point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in predicted_cls_id]
