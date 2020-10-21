@@ -315,7 +315,7 @@ def collect_scan_discrete(x, y, z, pointmap, scan_range):
 
 rospy.init_node('raytrace_dynamic')
 t = rospy.Time.now().to_sec()
-bag = rosbag.Bag('data/area%d.bag'%VAL_AREA, 'w')
+bag = rosbag.Bag('data/s3dis_%d.bag'%VAL_AREA, 'w')
 
 def publish_cloud(cloud, t):
 	header = std_msgs.msg.Header()

@@ -46,7 +46,7 @@ Usage
 	#select MCPNet as the network architecture (other options are pointnet,pointnet2,voxnet,sgpn)
 	#select Area 3 as validation set (Areas 1,2,4,5,6 as training set)
 	#model will be saved in models/mcpnet_model3.ckpt
-	python train.py --net mcpnet --area 3
+	python train.py --net mcpnet --dataset s3dis --train-area 1,2,4,5,6 --val-area 3
 
 	#start the ROS node for incremental segmentation
 	#select Area 3 as the validation dataset
