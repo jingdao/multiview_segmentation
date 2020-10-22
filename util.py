@@ -102,24 +102,26 @@ DATA ascii
 	f.close()
 	print('Saved %d points to %s' % (l,filename))
 
-def get_cls_id_metrics(gt_cls_id, predicted_cls_id):
+def get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printout=False):
     stats = {}
     stats['all'] = {'tp':0, 'fp':0, 'fn':0} 
-    for c in classes:
+    for c in class_labels:
         stats[c] = {'tp':0, 'fp':0, 'fn':0} 
     for g in range(len(predicted_cls_id)):
         if gt_cls_id[g] == predicted_cls_id[g]:
-            stats[classes[int(gt_cls_id[g])]]['tp'] += 1
+            stats[class_labels[int(gt_cls_id[g])]]['tp'] += 1
             stats['all']['tp'] += 1
         else:
-            stats[classes[int(gt_cls_id[g])]]['fn'] += 1
+            stats[class_labels[int(gt_cls_id[g])]]['fn'] += 1
             stats['all']['fn'] += 1
-            stats[classes[predicted_cls_id[g]]]['fp'] += 1
+            stats[class_labels[predicted_cls_id[g]]]['fp'] += 1
             stats['all']['fp'] += 1
 
     prec_agg = []
     recl_agg = []
     iou_agg = []
+    if printout:
+        print("%15s %6s %6s %6s %5s %5s %5s"%('CLASS','TP','FP','FN','PREC','RECL','IOU'))
     for c in sorted(stats.keys()):
         try:
             stats[c]['pr'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'])
@@ -134,9 +136,14 @@ def get_cls_id_metrics(gt_cls_id, predicted_cls_id):
         except ZeroDivisionError:
             stats[c]['IOU'] = 0
         if c not in ['all']:
+            print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%(c,stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
             prec_agg.append(stats[c]['pr'])
             recl_agg.append(stats[c]['rc'])
             iou_agg.append(stats[c]['IOU'])
+
+    c = 'all'
+    print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('all',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
+    print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('avg',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg)))
 
     acc = stats['all']['pr']
     iou = stats['all']['IOU']

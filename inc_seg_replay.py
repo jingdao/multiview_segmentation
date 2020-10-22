@@ -2,7 +2,7 @@ import h5py
 import sys
 import numpy
 import scipy
-from class_util import classes, class_to_id, class_to_color_rgb
+from class_util import classes, class_to_color_rgb, classes_gc, class_to_color_rgb_gc
 from architecture import MCPNet, PointNet, PointNet2, VoxNet, SGPN
 import itertools
 import os
@@ -16,28 +16,35 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, adjusted_mutual_info_score
 import rosbag
 from sensor_msgs import point_cloud2
+from util import savePCD, get_cls_id_metrics, get_obj_id_metrics
 
-VAL_AREA = 1
+num_neighbors = 50
+neighbor_radii = 0.3
+feature_size = 6
+NUM_CLASSES = len(classes)
+resolution = 0.1
+local_range = 2
+
+VAL_AREA = '5'
 net_type = 'mcpnet'
 for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--area':
-		VAL_AREA = int(sys.argv[i+1])
+		VAL_AREA = sys.argv[i+1]
 	if sys.argv[i]=='--net':
 		net_type = sys.argv[i+1]
-num_view = 10
-num_instance = 10
-num_neighbors = 50
-#num_neighbors = int(sys.argv[2])
-neighbor_radii = 0.3
+	if sys.argv[i]=='--dataset':
+		dataset = sys.argv[i+1]
+		if dataset=='guardian_centers':
+			local_range = 20
+			NUM_CLASSES = 17
+			feature_size = 3
+			classes = classes_gc
+			class_to_color_rgb = class_to_color_rgb_gc
+
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
 embedding_size = 50
 samples_per_instance = 16
-feature_size = 6
-max_epoch = 100
-NUM_CLASSES = len(classes)
-resolution = 0.1
-local_range = 2
 sample_state = numpy.random.RandomState(0)
 count_msg = 0
 obj_count = 0
@@ -86,8 +93,7 @@ elif net_type=='mcpnet_simple':
 elif net_type=='mcpnet':
 	net = MCPNet(batch_size, num_neighbors, feature_size, hidden_size, embedding_size, NUM_CLASSES)
 saver = tf.train.Saver()
-MODEL_PATH = 'models/%s_model%d.ckpt'%(net_type, VAL_AREA)
-AREAS = [1,2,3,4,5,6]
+MODEL_PATH = 'models/%s_model_%s_%s.ckpt'%(net_type, dataset, VAL_AREA)
 saver.restore(sess, MODEL_PATH)
 print('Restored network from %s'%MODEL_PATH)
 
@@ -144,12 +150,12 @@ def process_cloud(cloud, robot_position):
 			coarse_map[kk].append(idx)
 		
 		if net_type=='mcpnet' and num_neighbors>0:
-			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*6))
-			stacked_points[:,:6] = numpy.array(point_orig_list[-len(update_list):])
+			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*feature_size))
+			stacked_points[:,:feature_size] = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
 			stacked_points[:,:2] -= robot_position
 			for i in range(len(update_list)):
 				idx = point_id_map[update_list[i]]
-				p = point_orig_list[idx][:6]
+				p = point_orig_list[idx][:feature_size]
 				k = tuple((p[:3]/neighbor_radii).round().astype(int))
 				neighbors = []
 				for offset in itertools.product(range(-1,2),range(-1,2),range(-1,2)):
@@ -157,11 +163,11 @@ def process_cloud(cloud, robot_position):
 					if kk in coarse_map:
 						neighbors.extend(coarse_map[kk])
 				neighbors = sample_state.choice(neighbors, num_neighbors, replace=len(neighbors)<num_neighbors)
-				neighbors = numpy.array([point_orig_list[n][:6] for n in neighbors])
+				neighbors = numpy.array([point_orig_list[n][:feature_size] for n in neighbors])
 				neighbors -= p
-				stacked_points[i,6:] = neighbors.reshape(1, num_neighbors*6)
+				stacked_points[i,feature_size:] = neighbors.reshape(1, num_neighbors*feature_size)
 		else:
-			stacked_points = numpy.array(point_orig_list[-len(update_list):])
+			stacked_points = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
 			stacked_points[:,:2] -= robot_position
 
 		num_batches = int(math.ceil(1.0 * len(stacked_points) / batch_size))
@@ -248,7 +254,7 @@ def process_cloud(cloud, robot_position):
 	print('Scan #%3d: cur:%4d/%3d agg:%5d/%3d time %.3f'%(count_msg, len(update_list), len(set(obj_id_list[len(obj_id_list)-len(update_list):])), len(point_id_map), len(set(obj_id_list)), t))
 	count_msg += 1
 
-bag = rosbag.Bag('data/area%d.bag' % VAL_AREA, 'r')
+bag = rosbag.Bag('data/%s_%s.bag' % (dataset, VAL_AREA), 'r')
 poses = []
 for topic, msg, t in bag.read_messages(topics=['slam_out_pose']):
 	poses.append([msg.pose.position.x, msg.pose.position.y])
@@ -256,72 +262,44 @@ i = 0
 for topic, msg, t in bag.read_messages(topics=['laser_cloud_surround']):
 	process_cloud(msg, poses[i])
 	i += 1
+#	if i==1:
+#		break
 
-#calculate accuracy
-def calculate_accuracy():
-	stats = {}
-	stats['all'] = {'tp':0, 'fp':0, 'fn':0} 
-	for c in classes:
-		stats[c] = {'tp':0, 'fp':0, 'fn':0} 
-	for g in range(len(predicted_cls_id)):
-		if cls_id_list[g] == predicted_cls_id[g]:
-			stats[classes[int(cls_id_list[g])]]['tp'] += 1
-			stats['all']['tp'] += 1
-		else:
-			stats[classes[int(cls_id_list[g])]]['fn'] += 1
-			stats['all']['fn'] += 1
-			stats[classes[predicted_cls_id[g]]]['fp'] += 1
-			stats['all']['fp'] += 1
+#ignore clutter in evaluation
+valid_mask = numpy.array(obj_id_list) > 0
+gt_obj_id = numpy.array(obj_id_list)[valid_mask]
+predicted_obj_id = numpy.array(predicted_obj_id)[valid_mask]
+gt_cls_id = numpy.array(cls_id_list)[valid_mask]
+predicted_cls_id = numpy.array(predicted_cls_id)[valid_mask]
+point_orig_list = numpy.array(point_orig_list)[valid_mask]
+embedding_list = numpy.array(embedding_list)[valid_mask]
 
-	prec_agg = []
-	recl_agg = []
-	iou_agg = []
-	print("%10s %6s %6s %6s %5s %5s %5s"%('CLASS','TP','FP','FN','PREC','RECL','IOU'))
-	for c in sorted(stats.keys()):
-		try:
-			stats[c]['pr'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'])
-		except ZeroDivisionError:
-			stats[c]['pr'] = 0
-		try:
-			stats[c]['rc'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fn'])
-		except ZeroDivisionError:
-			stats[c]['rc'] = 0
-		try:
-			stats[c]['IOU'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'] + stats[c]['fn'])
-		except ZeroDivisionError:
-			stats[c]['IOU'] = 0
-		if c not in ['all']:
-			print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%(c,stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
-			prec_agg.append(stats[c]['pr'])
-			recl_agg.append(stats[c]['rc'])
-			iou_agg.append(stats[c]['IOU'])
-	c = 'all'
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%('all',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f"%('avg',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg)))
-
+obj_color = numpy.random.randint(0,255,(max(gt_obj_id)+1,3))
+obj_color[0] = [100, 100, 100]
+point_orig_list[:,3:6] = obj_color[gt_obj_id, :]
+savePCD('viz/area%s_gt_obj_id.pcd' % VAL_AREA, point_orig_list)
+obj_color = numpy.random.randint(0,255,(max(predicted_obj_id)+1,3))
+obj_color[0] = [100, 100, 100]
+point_orig_list[:,3:6] = obj_color[predicted_obj_id, :]
+valid_mask = numpy.ones(len(predicted_obj_id), dtype=bool)
+for i in set(predicted_obj_id):
+    cluster_mask = predicted_obj_id==i
+    if numpy.sum(cluster_mask) < 10:
+        valid_mask[cluster_mask] = False
+savePCD('viz/%s_area%s_predicted_obj_id.pcd' % (net_type, VAL_AREA), point_orig_list[valid_mask])
+point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in gt_cls_id]
+savePCD('viz/area%s_gt_cls_id.pcd' % VAL_AREA, point_orig_list)
+point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in predicted_cls_id]
+savePCD('viz/%s_area%s_predicted_cls_id.pcd' % (net_type, VAL_AREA), point_orig_list)
+if len(embedding_list) > 0:
+	X_embedded = PCA(n_components=3).fit_transform(embedding_list)
+	obj_color = (X_embedded - X_embedded.min(axis=0)) / (X_embedded.max(axis=0) - X_embedded.min(axis=0)) * 255
+	point_orig_list[:,3:6] = obj_color
+	savePCD('viz/%s_area%s_embedding.pcd' % (net_type, VAL_AREA), point_orig_list)
 
 print("Avg Comp Time: %.3f" % numpy.mean(comp_time))
 print("CPU Mem: %.2f" % (psutil.Process(os.getpid()).memory_info()[0] / 1.0e9))
 print("GPU Mem: %.1f" % (sess.run(tf.contrib.memory_stats.MaxBytesInUse()) / 1.0e6))
-
-nmi = normalized_mutual_info_score(obj_id_list, predicted_obj_id)
-ami = adjusted_mutual_info_score(obj_id_list, predicted_obj_id)
-ars = adjusted_rand_score(obj_id_list, predicted_obj_id)
-print("NMI: %.3f AMI: %.3f ARS: %.3f %d/%d clusters"% (nmi,ami,ars,len(numpy.unique(predicted_obj_id)),len(numpy.unique(obj_id_list))))
-calculate_accuracy()
-
-predicted_cls_id = numpy.array(predicted_cls_id)
-min_cluster_size = 10
-mask = numpy.zeros(len(predicted_obj_id),dtype=bool)
-removed_clusters = 0
-for c in clusters:
-	if len(clusters[c]) < min_cluster_size:
-		mask[clusters[c]] = True
-		removed_clusters += 1
-	M = scipy.stats.mode(predicted_cls_id[clusters[c]])[0][0]
-	predicted_cls_id[clusters[c]] = M
-predicted_obj_id = numpy.array(predicted_obj_id)
-predicted_obj_id[mask] = 0
-print("Filtered %d points (remaining %d clusters)"%(numpy.sum(mask), len(set(predicted_obj_id))))
-calculate_accuracy()
-
+nmi, ami, ars, prc, rcl, iou, hom, com, vms = get_obj_id_metrics(gt_obj_id, predicted_obj_id)
+print("NMI: %.3f AMI: %.3f ARS: %.3f PRC: %.3f RCL: %.3f IOU: %.3f HOM: %.3f COM: %.3f VMS: %.3f %d/%d clusters"% (nmi,ami,ars,prc, rcl, iou, hom,com,vms,len(numpy.unique(predicted_obj_id)),len(numpy.unique(gt_obj_id))))
+acc, iou, avg_acc, avg_iou, stats = get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printout=True)

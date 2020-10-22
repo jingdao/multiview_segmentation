@@ -30,6 +30,7 @@ label_resolution = 0.2
 start_time = 0
 end_time = numpy.inf
 subsample = 1
+time_interval = 0.1
 
 AREA = None
 for i in range(len(sys.argv)-1):
@@ -44,7 +45,6 @@ if AREA=='5_0':
         [0.000, 0.000, 0.000, 1.000],
     ])
     start_time = 100
-    subsample = 5
 elif AREA=='7_0':
     velodyne_to_faro = numpy.array([
         [0.887, 0.459, -0.054, 206.789],
@@ -53,7 +53,6 @@ elif AREA=='7_0':
         [0.000, 0.000, 0.000, 1.000],
     ])
     start_time = 45
-    subsample = 5
 elif AREA=='9_1':
     velodyne_to_faro = numpy.array([
         [-0.010, 0.999, -0.046, 195.002],
@@ -62,7 +61,6 @@ elif AREA=='9_1':
         [0.000, 0.000, 0.000, 1.000],
     ])
     end_time = 100
-    subsample = 5
 elif AREA=='10_2':
     velodyne_to_faro = numpy.array([
         [0.676, 0.737, -0.008, 204.603],
@@ -70,7 +68,6 @@ elif AREA=='10_2':
         [-0.032, 0.040, 0.999, -0.642],
         [0.000, 0.000, 0.000, 1.000],
     ])
-    subsample = 5
 elif AREA=='10_6':
     velodyne_to_faro = numpy.array([
         [0.998, 0.069, 0.011, 249.252],
@@ -79,7 +76,6 @@ elif AREA=='10_6':
         [0.000, 0.000, 0.000, 1.000],
     ])
     end_time = 60
-    subsample = 5
 elif AREA=='16_4':
     velodyne_to_faro = numpy.array([
         [-0.470, 0.881, 0.058, 222.270],
@@ -87,7 +83,6 @@ elif AREA=='16_4':
         [0.036, -0.047, 0.998, -0.082],
         [0.000, 0.000, 0.000, 1.000],
     ])
-    subsample = 5
 else:
     velodyne_to_faro = None
 faro_offset = numpy.array([234.40, -8.49, 0])
@@ -160,7 +155,7 @@ def process_cloud(msg):
             if previous_time is None:
                 secs = msg.header.stamp.to_sec()
             else:
-                secs = previous_time + 0.1
+                secs = previous_time + time_interval
             previous_time = secs
             t = rospy.Time.from_sec(secs)
             msg.header.frame_id = '/map'

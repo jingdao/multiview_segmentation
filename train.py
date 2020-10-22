@@ -2,7 +2,7 @@ import h5py
 import sys
 import numpy
 import scipy
-from class_util import classes, class_to_id, class_to_color_rgb
+from class_util import classes
 from architecture import MCPNet, PointNet, PointNet2, VoxNet, SGPN
 import itertools
 import os
@@ -166,10 +166,14 @@ def process_cloud(cloud, robot_position):
 		coarse_map[kk].append(idx)
 	
 	if count_msg%train_subsample==0:
-		neighbor_array = []
+		if len(pcd) > batch_size*2:
+			point_samples = sample_state.choice(len(pcd), batch_size*2, replace=False)
+		else:
+			point_samples = numpy.arange(len(pcd))
 		if net_type=='mcpnet' and num_neighbors>0:
-			for i in range(len(pcdi)):
-				p = original_pcd[i,:feature_size]
+			neighbor_array = []
+			for i in range(len(point_samples)):
+				p = original_pcd[point_samples[i],:feature_size]
 				idx = point_id_map[tuple((p[:3]/resolution).round().astype(int))]
 				k = tuple((point_orig_list[idx][:3]/neighbor_radii).round().astype(int))
 				neighbors = []
@@ -181,11 +185,11 @@ def process_cloud(cloud, robot_position):
 				neighbors = numpy.array([point_orig_list[n][:feature_size] for n in neighbors])
 				neighbors -= p
 				neighbor_array.append(neighbors)
-			agg_points.append(numpy.hstack((pcd[:,:feature_size], numpy.array(neighbor_array).reshape((len(pcd), num_neighbors*feature_size)))))
+			agg_points.append(numpy.hstack((pcd[point_samples,:feature_size], numpy.array(neighbor_array).reshape((len(point_samples), num_neighbors*feature_size)))))
 		else:
-			agg_points.append(pcd[:,:feature_size])
-		agg_obj_id.append(pcd[:,6])
-		agg_cls_id.append(pcd[:,7])
+			agg_points.append(pcd[point_samples,:feature_size])
+		agg_obj_id.append(pcd[point_samples,6])
+		agg_cls_id.append(pcd[point_samples,7])
 
 	t = time.time() - t
 	sys.stdout.write('Scan #%3d: cur:%4d agg:%5d time %.3f\r'%(count_msg, len(update_list), len(point_id_map),  t))
@@ -206,15 +210,16 @@ for area in AREAS:
 	poses = []
 	for topic, msg, t in bag.read_messages(topics=['slam_out_pose']):
 		poses.append([msg.pose.position.x, msg.pose.position.y])
-	i = 0
+	n = 0
 	for topic, msg, t in bag.read_messages(topics=['laser_cloud_surround']):
-		process_cloud(msg, poses[i])
-		i += 1
-#		if i==5:
+		process_cloud(msg, poses[n])
+		n += 1
+#		if n==5:
 #			break
 	obj_id_list = [i for j in agg_obj_id for i in j]
 	cls_id_list = [i for j in agg_cls_id for i in j]
-	print('obj', len(set(obj_id_list)), 'cls', set(cls_id_list))
+	u, c = numpy.unique(cls_id_list, return_counts=True)
+	print('scans', n, 'obj', len(set(obj_id_list)), 'cls', u, c)
 	if area in VAL_AREA:
 		val_points.extend(agg_points) 
 		val_obj_id.extend(agg_obj_id) 
