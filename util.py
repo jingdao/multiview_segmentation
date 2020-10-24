@@ -136,14 +136,16 @@ def get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printo
         except ZeroDivisionError:
             stats[c]['IOU'] = 0
         if c not in ['all']:
-            print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%(c,stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
+            if printout:			
+                print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%(c,stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
             prec_agg.append(stats[c]['pr'])
             recl_agg.append(stats[c]['rc'])
             iou_agg.append(stats[c]['IOU'])
 
-    c = 'all'
-    print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('all',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
-    print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('avg',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg)))
+    if printout:
+        c = 'all'
+        print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('all',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU']))
+        print("%15s %6d %6d %6d %5.3f %5.3f %5.3f"%('avg',stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg)))
 
     acc = stats['all']['pr']
     iou = stats['all']['IOU']

@@ -24,6 +24,7 @@ feature_size = 6
 NUM_CLASSES = len(classes)
 resolution = 0.1
 local_range = 2
+save_viz = False
 
 VAL_AREA = '5'
 net_type = 'mcpnet'
@@ -40,6 +41,8 @@ for i in range(len(sys.argv)-1):
 			feature_size = 3
 			classes = classes_gc
 			class_to_color_rgb = class_to_color_rgb_gc
+	if sys.argv[i]=='--save':          
+		save_viz = True
 
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
@@ -64,7 +67,7 @@ agg_count = []
 normal_threshold = 0.9 #0.8
 color_threshold = 0.005 #0.01
 ed_threshold = 0.1
-dp_threshold = 0.99 if net_type.startswith('mcpnet') else 0.98
+dp_threshold = 0.97 if net_type.startswith('mcpnet') else 0.98
 accA = {}
 accB = {}
 accN = {}
@@ -106,7 +109,7 @@ def process_cloud(cloud, robot_position):
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-robot_position)**2, axis=1) < local_range * local_range
 	#only keep nonzero obj_id
-	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
+#	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
@@ -277,32 +280,35 @@ point_orig_list = numpy.array(point_orig_list)[valid_mask]
 if len(embedding_list) > 0:
 	embedding_list = numpy.array(embedding_list)[valid_mask]
 
-obj_color = numpy.random.randint(0,255,(max(gt_obj_id)+1,3))
-obj_color[0] = [100, 100, 100]
-point_orig_list[:,3:6] = obj_color[gt_obj_id, :]
-savePCD('viz/area%s_gt_obj_id.pcd' % VAL_AREA, point_orig_list)
-obj_color = numpy.random.randint(0,255,(max(predicted_obj_id)+1,3))
-obj_color[0] = [100, 100, 100]
-point_orig_list[:,3:6] = obj_color[predicted_obj_id, :]
-valid_mask = numpy.ones(len(predicted_obj_id), dtype=bool)
-for i in set(predicted_obj_id):
-    cluster_mask = predicted_obj_id==i
-    if numpy.sum(cluster_mask) < 10:
-        valid_mask[cluster_mask] = False
-savePCD('viz/%s_area%s_predicted_obj_id.pcd' % (net_type, VAL_AREA), point_orig_list[valid_mask])
-point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in gt_cls_id]
-savePCD('viz/area%s_gt_cls_id.pcd' % VAL_AREA, point_orig_list)
-point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in predicted_cls_id]
-savePCD('viz/%s_area%s_predicted_cls_id.pcd' % (net_type, VAL_AREA), point_orig_list)
-if len(embedding_list) > 0:
-	X_embedded = PCA(n_components=3).fit_transform(embedding_list)
-	obj_color = (X_embedded - X_embedded.min(axis=0)) / (X_embedded.max(axis=0) - X_embedded.min(axis=0)) * 255
-	point_orig_list[:,3:6] = obj_color
-	savePCD('viz/%s_area%s_embedding.pcd' % (net_type, VAL_AREA), point_orig_list)
+if save_viz:
+	obj_color = numpy.random.randint(0,255,(max(gt_obj_id)+1,3))
+	obj_color[0] = [100, 100, 100]
+	point_orig_list[:,3:6] = obj_color[gt_obj_id, :]
+	savePCD('viz/area%s_gt_obj_id.pcd' % VAL_AREA, point_orig_list)
+	obj_color = numpy.random.randint(0,255,(max(predicted_obj_id)+1,3))
+	obj_color[0] = [100, 100, 100]
+	point_orig_list[:,3:6] = obj_color[predicted_obj_id, :]
+	valid_mask = numpy.ones(len(predicted_obj_id), dtype=bool)
+	for i in set(predicted_obj_id):
+		cluster_mask = predicted_obj_id==i
+		if numpy.sum(cluster_mask) < 10:
+			valid_mask[cluster_mask] = False
+	savePCD('viz/%s_area%s_predicted_obj_id.pcd' % (net_type, VAL_AREA), point_orig_list[valid_mask])
+	point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in gt_cls_id]
+	savePCD('viz/area%s_gt_cls_id.pcd' % VAL_AREA, point_orig_list)
+	point_orig_list[:,3:6] = [class_to_color_rgb[c] for c in predicted_cls_id]
+	savePCD('viz/%s_area%s_predicted_cls_id.pcd' % (net_type, VAL_AREA), point_orig_list)
+	if len(embedding_list) > 0:
+		X_embedded = PCA(n_components=3).fit_transform(embedding_list)
+		obj_color = (X_embedded - X_embedded.min(axis=0)) / (X_embedded.max(axis=0) - X_embedded.min(axis=0)) * 255
+		point_orig_list[:,3:6] = obj_color
+		savePCD('viz/%s_area%s_embedding.pcd' % (net_type, VAL_AREA), point_orig_list)
 
 print("Avg Comp Time: %.3f" % numpy.mean(comp_time))
 print("CPU Mem: %.2f" % (psutil.Process(os.getpid()).memory_info()[0] / 1.0e9))
 print("GPU Mem: %.1f" % (sess.run(tf.contrib.memory_stats.MaxBytesInUse()) / 1.0e6))
 nmi, ami, ars, prc, rcl, iou, hom, com, vms = get_obj_id_metrics(gt_obj_id, predicted_obj_id)
 print("NMI: %.3f AMI: %.3f ARS: %.3f PRC: %.3f RCL: %.3f IOU: %.3f HOM: %.3f COM: %.3f VMS: %.3f %d/%d clusters"% (nmi,ami,ars,prc, rcl, iou, hom,com,vms,len(numpy.unique(predicted_obj_id)),len(numpy.unique(gt_obj_id))))
-acc, iou, avg_acc, avg_iou, stats = get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printout=True)
+acc, iou, avg_acc, avg_iou, stats = get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printout=False)
+print('all 0 0 0 %.3f 0 %.3f' % (acc, iou))
+print('avg 0 0 0 %.3f 0 %.3f' % (avg_acc, avg_iou))
