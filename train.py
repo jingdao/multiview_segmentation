@@ -64,7 +64,7 @@ resolution = 0.1
 num_neighbors = 50
 neighbor_radii = 0.3
 feature_size = 6
-max_epoch = 100
+max_epoch = 50
 samples_per_instance = 16
 train_subsample = 10
 NUM_CLASSES = len(classes)
@@ -166,10 +166,9 @@ def process_cloud(cloud, robot_position):
 		coarse_map[kk].append(idx)
 	
 	if count_msg%train_subsample==0:
-		if len(pcd) > batch_size*2:
-			point_samples = sample_state.choice(len(pcd), batch_size*2, replace=False)
-		else:
-			point_samples = numpy.arange(len(pcd))
+		point_samples = numpy.nonzero(pcd[:, 6] > 0)[0]
+		if len(point_samples) > batch_size*2:
+			point_samples = point_samples[sample_state.choice(len(point_samples), batch_size*2, replace=False)]
 		if net_type=='mcpnet' and num_neighbors>0:
 			neighbor_array = []
 			for i in range(len(point_samples)):

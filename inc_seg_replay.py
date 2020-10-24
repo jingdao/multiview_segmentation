@@ -64,7 +64,7 @@ agg_count = []
 normal_threshold = 0.9 #0.8
 color_threshold = 0.005 #0.01
 ed_threshold = 0.1
-dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.98
+dp_threshold = 0.99 if net_type.startswith('mcpnet') else 0.98
 accA = {}
 accB = {}
 accN = {}
@@ -105,6 +105,8 @@ def process_cloud(cloud, robot_position):
 		pcd.append(p)
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-robot_position)**2, axis=1) < local_range * local_range
+	#only keep nonzero obj_id
+	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
@@ -272,7 +274,8 @@ predicted_obj_id = numpy.array(predicted_obj_id)[valid_mask]
 gt_cls_id = numpy.array(cls_id_list)[valid_mask]
 predicted_cls_id = numpy.array(predicted_cls_id)[valid_mask]
 point_orig_list = numpy.array(point_orig_list)[valid_mask]
-embedding_list = numpy.array(embedding_list)[valid_mask]
+if len(embedding_list) > 0:
+	embedding_list = numpy.array(embedding_list)[valid_mask]
 
 obj_color = numpy.random.randint(0,255,(max(gt_obj_id)+1,3))
 obj_color[0] = [100, 100, 100]
