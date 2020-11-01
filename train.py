@@ -14,6 +14,7 @@ import random
 import math
 import rosbag
 from sensor_msgs import point_cloud2
+from util import savePCD
 
 def get_acc(emb,lb):
 	correct = 0
@@ -34,11 +35,11 @@ def get_anova(emb, lb):
 	for i in range(len(lid)):
 		num_in_group = numpy.sum(lb==lid[i])
 		between_group += numpy.sum((class_mean[i] - overall_mean)**2) * num_in_group
-	between_group /= (len(lid) - 1)
+	between_group /= (len(lid) - 1 + 1e-6)
 	within_group = 0
 	for i in range(len(lid)):
 		within_group += numpy.sum((emb[lb==lid[i]] - class_mean[i])**2)
-	within_group /= (len(lb) - len(lid))
+	within_group /= (len(lb) - len(lid) + 1e-6)
 	F = 0 if within_group==0 else between_group / within_group
 	return between_group, within_group, F
 
@@ -83,7 +84,7 @@ for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--dataset':
 		dataset = sys.argv[i+1]
 		if dataset=='guardian_centers':
-			local_range = 20
+			local_range = 10
 			NUM_CLASSES = 17
 			feature_size = 3
 			train_subsample = 1
@@ -144,18 +145,20 @@ def process_cloud(cloud, robot_position):
 		pcd.append(p)
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-robot_position)**2, axis=1) < local_range * local_range
+	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
 	pcd[:,:2] -= robot_position
-	pcd[:,2] -= pcd[:,2].min()
+	minZ = pcd[:,2].min()
+	pcd[:,2] -= minZ
 
 	pcdi = [tuple(p) for p in (original_pcd[:,:3]/resolution).round().astype(int)]
 	update_list = []
 	for i in range(len(pcdi)):
 		if not pcdi[i] in point_id_map:
 			point_id_map[pcdi[i]] = len(point_orig_list)
-			point_orig_list.append(original_pcd[i,:6].copy())
+			point_orig_list.append(original_pcd[i].copy())
 			update_list.append(pcdi[i])
 
 	for k in update_list:
@@ -166,9 +169,12 @@ def process_cloud(cloud, robot_position):
 		coarse_map[kk].append(idx)
 	
 	if count_msg%train_subsample==0:
-		point_samples = numpy.nonzero(pcd[:, 6] > 0)[0]
-		if len(point_samples) > batch_size*2:
-			point_samples = point_samples[sample_state.choice(len(point_samples), batch_size*2, replace=False)]
+		pcd = numpy.array(point_orig_list[-len(update_list):])
+		original_pcd = pcd.copy()
+		pcd[:,:2] -= robot_position
+		pcd[:,2] -= minZ
+		point_samples = numpy.arange(len(pcd))
+		point_samples = point_samples[sample_state.choice(len(point_samples), batch_size*2, replace=len(point_samples) < batch_size*2)]
 		if net_type=='mcpnet' and num_neighbors>0:
 			neighbor_array = []
 			for i in range(len(point_samples)):
@@ -184,7 +190,9 @@ def process_cloud(cloud, robot_position):
 				neighbors = numpy.array([point_orig_list[n][:feature_size] for n in neighbors])
 				neighbors -= p
 				neighbor_array.append(neighbors)
-			agg_points.append(numpy.hstack((pcd[point_samples,:feature_size], numpy.array(neighbor_array).reshape((len(point_samples), num_neighbors*feature_size)))))
+			stacked_points = numpy.hstack((pcd[point_samples,:feature_size], numpy.array(neighbor_array).reshape((len(point_samples), num_neighbors*feature_size))))
+			stacked_points[:, :2] = 0
+			agg_points.append(stacked_points)
 		else:
 			agg_points.append(pcd[point_samples,:feature_size])
 		agg_obj_id.append(pcd[point_samples,6])
@@ -223,7 +231,7 @@ for area in AREAS:
 		val_points.extend(agg_points) 
 		val_obj_id.extend(agg_obj_id) 
 		val_cls_id.extend(agg_cls_id) 
-	else:
+	if area in TRAIN_AREA:
 		train_points.extend(agg_points) 
 		train_obj_id.extend(agg_obj_id) 
 		train_cls_id.extend(agg_cls_id) 

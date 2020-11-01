@@ -28,7 +28,8 @@ save_viz = False
 
 VAL_AREA = '5'
 net_type = 'mcpnet'
-for i in range(len(sys.argv)-1):
+dataset = 's3dis'
+for i in range(len(sys.argv)):
 	if sys.argv[i]=='--area':
 		VAL_AREA = sys.argv[i+1]
 	if sys.argv[i]=='--net':
@@ -36,7 +37,7 @@ for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--dataset':
 		dataset = sys.argv[i+1]
 		if dataset=='guardian_centers':
-			local_range = 20
+			local_range = 10
 			NUM_CLASSES = 17
 			feature_size = 3
 			classes = classes_gc
@@ -67,7 +68,7 @@ agg_count = []
 normal_threshold = 0.9 #0.8
 color_threshold = 0.005 #0.01
 ed_threshold = 0.1
-dp_threshold = 0.97 if net_type.startswith('mcpnet') else 0.98
+dp_threshold = 0.92 if net_type.startswith('mcpnet') else 0.98
 accA = {}
 accB = {}
 accN = {}
@@ -109,13 +110,17 @@ def process_cloud(cloud, robot_position):
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-robot_position)**2, axis=1) < local_range * local_range
 	#only keep nonzero obj_id
-#	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
+	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
+	#shuffle to remove ordering in Z-direction
+	numpy.random.shuffle(pcd)
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
 	pcd[:,:2] -= robot_position
-	pcd[:,2] -= pcd[:,2].min()
+	minZ = pcd[:,2].min()
+	pcd[:,2] -= minZ
 
+	acc = 0.0
 	pcdi = [tuple(p) for p in (original_pcd[:,:3]/resolution).round().astype(int)]
 	update_list = []
 	for i in range(len(pcdi)):
@@ -157,7 +162,8 @@ def process_cloud(cloud, robot_position):
 		if net_type=='mcpnet' and num_neighbors>0:
 			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*feature_size))
 			stacked_points[:,:feature_size] = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
-			stacked_points[:,:2] -= robot_position
+			stacked_points[:, :2] = 0
+			stacked_points[:,2] -= minZ
 			for i in range(len(update_list)):
 				idx = point_id_map[update_list[i]]
 				p = point_orig_list[idx][:feature_size]
@@ -174,6 +180,7 @@ def process_cloud(cloud, robot_position):
 		else:
 			stacked_points = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
 			stacked_points[:,:2] -= robot_position
+			stacked_points[:,2] -= minZ
 
 		num_batches = int(math.ceil(1.0 * len(stacked_points) / batch_size))
 		input_points = numpy.zeros((batch_size, stacked_points.shape[1]))
@@ -185,13 +192,15 @@ def process_cloud(cloud, robot_position):
 				input_points[:valid_idx-start_idx] = stacked_points[start_idx:valid_idx,:]
 			else:
 				input_points[:valid_idx-start_idx] = stacked_points[start_idx:valid_idx,:]
-				input_points[valid_idx-end_idx:] = stacked_points[sample_state.choice(range(len(stacked_points)), end_idx-valid_idx, replace=True),:]
+				padding_samples = sample_state.choice(range(len(stacked_points)), end_idx-valid_idx, replace=True)
+				input_points[valid_idx-end_idx:] = stacked_points[padding_samples, :]
 			if net_type in ['sgpn','mcpnet','mcpnet_simple']:
 				emb_val, cls_val = sess.run([net.embeddings, net.class_output], {net.input_pl:input_points, net.is_training_pl:False})
 				embedding_list.extend(emb_val[:valid_idx-start_idx])
 			else:
 				cls_val = sess.run(net.class_output, {net.input_pl:input_points, net.is_training_pl:False})
 			predicted_cls_id.extend(numpy.argmax(cls_val[:valid_idx-start_idx],axis=1))
+		acc = 1.0 * numpy.sum(numpy.equal(predicted_cls_id[-len(stacked_points):], cls_id_list[-len(stacked_points):])) / len(stacked_points)
 
 		neighbor_key = []
 		neighbor_probs = []
@@ -256,7 +265,7 @@ def process_cloud(cloud, robot_position):
 
 	t = time.time() - t
 	comp_time.append(t)
-	print('Scan #%3d: cur:%4d/%3d agg:%5d/%3d time %.3f'%(count_msg, len(update_list), len(set(obj_id_list[len(obj_id_list)-len(update_list):])), len(point_id_map), len(set(obj_id_list)), t))
+	print('Scan #%3d: cur:%4d/%3d agg:%5d/%3d acc %.2f time %.3f'%(count_msg, len(update_list), len(set(obj_id_list[len(obj_id_list)-len(update_list):])), len(point_id_map), len(set(obj_id_list)), acc, t))
 	count_msg += 1
 
 bag = rosbag.Bag('data/%s_%s.bag' % (dataset, VAL_AREA), 'r')

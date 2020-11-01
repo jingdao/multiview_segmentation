@@ -48,6 +48,9 @@ Usage
 	#model will be saved in models/mcpnet_model3.ckpt
 	python train.py --net mcpnet --dataset s3dis --train-area 1,2,4,5,6 --val-area 3
 
+    #optional: train a model for the Guardian Centers dataset
+    python train.py --net mcpnet --dataset guardian_centers --train-area 5_0,7_0,9_1,10_2,10_6 --val-area 16_4
+
 	#start the ROS node for incremental segmentation
 	#select Area 3 as the validation dataset
 	#select MCPNet as the network architecture
@@ -96,6 +99,11 @@ Evaluation for offline methods
     do
         python -u semi_offline_seg.py --mode space --area $i >> results/result_semi_offline_space.txt
     done
+
+Non-learning baseline methods
+--------
+    #online segmentation using normal vectors
+    python baseline_seg.py --mode normals --area 16_4
 
 Reference
 --------

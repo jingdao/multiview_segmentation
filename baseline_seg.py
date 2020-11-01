@@ -16,7 +16,7 @@ from geometry_msgs.msg import PoseStamped
 import std_msgs
 import rosbag
 
-local_range = 20
+local_range = 10
 resolution = 0.1
 normal_resolution = 0.3
 threshold = 0.995

@@ -97,7 +97,10 @@ DATA ascii
 """ % (l,l)
 	f.write(header)
 	for p in points:
-		rgb = (int(p[3]) << 16) | (int(p[4]) << 8) | int(p[5])
+		if len(p) > 3:
+			rgb = (int(p[3]) << 16) | (int(p[4]) << 8) | int(p[5])
+		else:
+			rgb = 0
 		f.write("%f %f %f %d\n"%(p[0],p[1],p[2],rgb))
 	f.close()
 	print('Saved %d points to %s' % (l,filename))
