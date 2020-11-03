@@ -7,12 +7,13 @@ import time
 import math
 import sys
 from architecture import MCPNet, PointNet, PointNet2, VoxNet, SGPN
-from class_util import classes, class_to_id, class_to_color_rgb
+from class_util import classes, class_to_color_rgb, classes_gc, class_to_color_rgb_gc
 import itertools
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, adjusted_mutual_info_score
 import scipy.stats
 import psutil
 import copy
+from util import get_cls_id_metrics, get_obj_id_metrics
 
 import roslib
 import rospy
@@ -28,13 +29,25 @@ def pose_callback(msg):
 	global robot_position
 	robot_position = [msg.pose.position.x, msg.pose.position.y]
 
-VAL_AREA = 1
+VAL_AREA = '1'
 net_type = 'mcpnet'
+dataset = 's3dis'
+local_range = 2
+feature_size = 6
+NUM_CLASSES = len(classes)
 for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--area':
-		VAL_AREA = int(sys.argv[i+1])
+		VAL_AREA = sys.argv[i+1]
 	if sys.argv[i]=='--net':
 		net_type = sys.argv[i+1]
+	if sys.argv[i]=='--dataset':
+		dataset = sys.argv[i+1]
+		if dataset=='guardian_centers':
+			local_range = 10
+			NUM_CLASSES = 17
+			feature_size = 3
+			classes = classes_gc
+			class_to_color_rgb = class_to_color_rgb_gc
 mode = None
 if '--color' in sys.argv:
 	mode='color'
@@ -45,16 +58,13 @@ if '--classify' in sys.argv:
 if '--boxes' in sys.argv:
 	mode='boxes'
 
-local_range = 2
 resolution = 0.1
 num_neighbors = 50
 neighbor_radii = 0.3
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
 embedding_size = 50
-dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.98
-feature_size = 6
-NUM_CLASSES = len(classes)
+dp_threshold = 0.92 if net_type.startswith('mcpnet') else 0.98
 
 point_id_map = {}
 coarse_map = {}
@@ -169,13 +179,18 @@ def cloud_surround_callback(cloud):
 		centroid = robot_position
 	pcd = numpy.array(pcd)
 	local_mask = numpy.sum((pcd[:,:2]-centroid)**2, axis=1) < local_range * local_range
+	#only keep nonzero obj_id
+	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
 	if len(pcd)==0:
 		return
+	#shuffle to remove ordering in Z-direction
+	numpy.random.shuffle(pcd)
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
 	pcd[:,:2] -= centroid
-	pcd[:,2] -= pcd[:,2].min()
+	minZ = pcd[:,2].min()
+	pcd[:,2] -= minZ
 
 	global_objects = [[] for i in range(len(classes))]
 	update_list = []
@@ -200,12 +215,13 @@ def cloud_surround_callback(cloud):
 			coarse_map[kk].append(idx)
 		
 		if net_type=='mcpnet' and num_neighbors>0:
-			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*6))
-			stacked_points[:,:6] = numpy.array(point_orig_list[-len(update_list):])
-			stacked_points[:,:2] -= robot_position
+			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*feature_size))
+			stacked_points[:,:feature_size] = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
+			stacked_points[:, :2] = 0
+			stacked_points[:,2] -= minZ
 			for i in range(len(update_list)):
 				idx = point_id_map[update_list[i]]
-				p = point_orig_list[idx][:6]
+				p = point_orig_list[idx][:feature_size]
 				k = tuple((p[:3]/neighbor_radii).round().astype(int))
 				neighbors = []
 				for offset in itertools.product(range(-1,2),range(-1,2),range(-1,2)):
@@ -213,12 +229,13 @@ def cloud_surround_callback(cloud):
 					if kk in coarse_map:
 						neighbors.extend(coarse_map[kk])
 				neighbors = sample_state.choice(neighbors, num_neighbors, replace=len(neighbors)<num_neighbors)
-				neighbors = numpy.array([point_orig_list[n][:6] for n in neighbors])
+				neighbors = numpy.array([point_orig_list[n][:feature_size] for n in neighbors])
 				neighbors -= p
-				stacked_points[i,6:] = neighbors.reshape(1, num_neighbors*6)
+				stacked_points[i,feature_size:] = neighbors.reshape(1, num_neighbors*feature_size)
 		else:
-			stacked_points = numpy.array(point_orig_list[-len(update_list):])
+			stacked_points = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
 			stacked_points[:,:2] -= robot_position
+			stacked_points[:,2] -= minZ
 
 		num_batches = int(math.ceil(1.0 * len(stacked_points) / batch_size))
 		input_points = numpy.zeros((batch_size, stacked_points.shape[1]))
@@ -244,6 +261,7 @@ def cloud_surround_callback(cloud):
 
 		neighbor_key = []
 		neighbor_probs = []
+		cluster_update = []
 		for k in update_list:
 			nk = [point_id_map[k]]
 			if net_type in ['sgpn','mcpnet','mcpnet_simple']:
@@ -280,30 +298,35 @@ def cloud_surround_callback(cloud):
 					for g in group:
 						if predicted_obj_id[g]==0: #add to existing cluster
 							predicted_obj_id[g] = group_id
+							cluster_update.append(g)
 							clusters[group_id].append(g)
 						elif predicted_obj_id[g]!=group_id: #merge two clusters
 							remove_id = predicted_obj_id[g]
 							clusters[group_id].extend(clusters[remove_id])
 							for r in clusters[remove_id]:
 								predicted_obj_id[r] = group_id
+								cluster_update.append(r)
 							del clusters[remove_id]
 				except ValueError: #all neighbors do not have ids assigned yet
 					clusters[obj_count + 1] = []
 					for g in group:
 						predicted_obj_id[g] = obj_count + 1
 						clusters[obj_count + 1].append(g)
+						cluster_update.append(g)
 					obj_count += 1
 
 	if len(update_list) > 0:
 		if mode=='color':
 			output_cloud = numpy.array(point_orig_list[-len(update_list):])
 			output_cloud[:,3:6] = (output_cloud[:,3:6]+0.5)*255
+#			for i in range(len(update_list)):
+#				output_cloud[i,3:6] = class_to_color_rgb[predicted_cls_id[-len(update_list)+i]]
 			publish_output(output_cloud)
 		elif mode=='cluster':
-			output_cloud = numpy.array(point_orig_list[-len(update_list):])
-			for i in range(len(update_list)):
-				obj_id = predicted_obj_id[-len(update_list)+i]
-#				obj_id = gt_obj_id[-len(update_list)+i]
+			output_cloud = numpy.array([point_orig_list[i] for i in cluster_update])
+			for i in range(len(cluster_update)):
+				obj_id = predicted_obj_id[cluster_update[i]]
+#				obj_id = gt_obj_id[cluster_update[i]]
 				if not obj_id in obj_color:
 					obj_color[obj_id] = numpy.random.randint(0,255,3)
 				output_cloud[i,3:6] = obj_color[obj_id]
@@ -341,7 +364,7 @@ def cloud_surround_callback(cloud):
 	
 
 GPU_INDEX = 0
-MODEL_PATH = 'models/%s_model%d.ckpt'%(net_type, VAL_AREA)
+MODEL_PATH = 'models/%s_model_%s_%s.ckpt'%(net_type, dataset, VAL_AREA)
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
@@ -379,121 +402,18 @@ for c in classes:
 	pubObjects.append(p)
 rospy.spin()
 
-#calculate accuracy
-def calculate_accuracy():
-	stats = {}
-	stats['all'] = {'tp':0, 'fp':0, 'fn':0, 'btp':0, 'bfp':0, 'bfn':0} 
-	for c in classes:
-		stats[c] = {'tp':0, 'fp':0, 'fn':0, 'btp':0, 'bfp':0, 'bfn':0} 
+#ignore clutter in evaluation
+valid_mask = numpy.array(gt_obj_id) > 0
+gt_obj_id = numpy.array(gt_obj_id)[valid_mask]
+predicted_obj_id = numpy.array(predicted_obj_id)[valid_mask]
+gt_cls_id = numpy.array(gt_cls_id)[valid_mask]
+predicted_cls_id = numpy.array(predicted_cls_id)[valid_mask]
 
-	gt_boxes = []
-	predicted_boxes = []
-	gt_box_label = []
-	predicted_box_label = []
-	for obj_id in set(gt_obj_id):
-		mask = gt_obj_id==obj_id
-		inliers = point_orig_list[mask,:3]
-		prediction = gt_cls_id[mask][0]
-		gt_boxes.append(mask)
-		gt_box_label.append(prediction)
-	for obj_id in set(predicted_obj_id):
-		mask = predicted_obj_id==obj_id
-		if numpy.sum(mask) > 50:
-			inliers = point_orig_list[mask,:3]
-			prediction = scipy.stats.mode(predicted_cls_id[mask])[0][0]
-			predicted_boxes.append(mask)
-			predicted_box_label.append(prediction)
-	predicted_boxes = numpy.array(predicted_boxes)
-	gt_boxes = numpy.array(gt_boxes)
-	matched = numpy.zeros(len(predicted_boxes), dtype=bool)
-	print('%d/%d boxes'%(len(predicted_boxes),len(gt_boxes)))
-	for i in range(len(gt_boxes)):
-		same_cls = gt_box_label[i] == predicted_box_label
-		if numpy.sum(same_cls)==0:
-			stats[classes[gt_box_label[i]]]['bfn'] += 1
-			stats['all']['bfn'] += 1
-			continue
-		intersection = numpy.sum(numpy.logical_and(gt_boxes[i], predicted_boxes[same_cls]), axis=1)
-		IOU = intersection / (1.0 * numpy.sum(gt_boxes[i]) + numpy.sum(predicted_boxes[same_cls],axis=1) - intersection)
-		if IOU.max() > 0.5:
-			matched[numpy.nonzero(same_cls)[0][numpy.argmax(IOU)]] = True
-			stats[classes[gt_box_label[i]]]['btp'] += 1
-			stats['all']['btp'] += 1
-		else:
-			stats[classes[gt_box_label[i]]]['bfn'] += 1
-			stats['all']['bfn'] += 1
-	for i in range(len(predicted_boxes)):
-		if not matched[i]:
-			stats[classes[predicted_box_label[i]]]['bfp'] += 1
-			stats['all']['bfp'] += 1
-
-	for g in range(len(predicted_cls_id)):
-		if gt_cls_id[g] == predicted_cls_id[g]:
-			stats[classes[int(gt_cls_id[g])]]['tp'] += 1
-			stats['all']['tp'] += 1
-		else:
-			stats[classes[int(gt_cls_id[g])]]['fn'] += 1
-			stats['all']['fn'] += 1
-			stats[classes[predicted_cls_id[g]]]['fp'] += 1
-			stats['all']['fp'] += 1
-
-	prec_agg = []
-	recl_agg = []
-	bprec_agg = []
-	brecl_agg = []
-	iou_agg = []
-	print("%10s %6s %6s %6s %5s %5s %5s %3s %3s %3s %5s %5s"%('CLASS','TP','FP','FN','PREC','RECL','IOU','BTP','BFP','BFN','PREC','RECL'))
-	for c in sorted(stats.keys()):
-		try:
-			stats[c]['pr'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'])
-		except ZeroDivisionError:
-			stats[c]['pr'] = 0
-		try:
-			stats[c]['rc'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fn'])
-		except ZeroDivisionError:
-			stats[c]['rc'] = 0
-		try:
-			stats[c]['IOU'] = 1.0 * stats[c]['tp'] / (stats[c]['tp'] + stats[c]['fp'] + stats[c]['fn'])
-		except ZeroDivisionError:
-			stats[c]['IOU'] = 0
-		try:
-			stats[c]['bpr'] = 1.0 * stats[c]['btp'] / (stats[c]['btp'] + stats[c]['bfp'])
-		except ZeroDivisionError:
-			stats[c]['bpr'] = 0
-		try:
-			stats[c]['brc'] = 1.0 * stats[c]['btp'] / (stats[c]['btp'] + stats[c]['bfn'])
-		except ZeroDivisionError:
-			stats[c]['brc'] = 0
-		if c not in ['all']:
-			print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%(c,
-				stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU'],
-				stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],stats[c]['bpr'],stats[c]['brc']))
-			prec_agg.append(stats[c]['pr'])
-			recl_agg.append(stats[c]['rc'])
-			iou_agg.append(stats[c]['IOU'])
-			bprec_agg.append(stats[c]['bpr'])
-			brecl_agg.append(stats[c]['brc'])
-	c = 'all'
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%('all',
-		stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],stats[c]['pr'],stats[c]['rc'],stats[c]['IOU'],
-		stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],stats[c]['bpr'],stats[c]['brc']))
-	print("%10s %6d %6d %6d %5.3f %5.3f %5.3f %3d %3d %3d %5.3f %5.3f"%('avg',
-		stats[c]['tp'],stats[c]['fp'],stats[c]['fn'],numpy.mean(prec_agg),numpy.mean(recl_agg),numpy.mean(iou_agg),
-		stats[c]['btp'],stats[c]['bfp'],stats[c]['bfn'],numpy.mean(bprec_agg),numpy.mean(brecl_agg)))
-
-					
 print("Avg Comp Time: %.3f" % numpy.mean(comp_time))
 print("CPU Mem: %.2f" % (psutil.Process(os.getpid()).memory_info()[0] / 1.0e9))
-#sys.exit(1)
-print("Computing stats, please wait ...")
-nmi = normalized_mutual_info_score(gt_obj_id, predicted_obj_id)
-ami = adjusted_mutual_info_score(gt_obj_id, predicted_obj_id)
-ars = adjusted_rand_score(gt_obj_id, predicted_obj_id)
-print("NMI: %.3f AMI: %.3f ARS: %.3f %d/%d clusters"% (nmi,ami,ars,len(numpy.unique(predicted_obj_id)),len(numpy.unique(gt_obj_id))))
-predicted_obj_id = numpy.array(predicted_obj_id)
-gt_obj_id = numpy.array(gt_obj_id)
-predicted_cls_id = numpy.array(predicted_cls_id)
-gt_cls_id = numpy.array(gt_cls_id)
-point_orig_list = numpy.array(point_orig_list)
-calculate_accuracy()
-
+print("GPU Mem: %.1f" % (sess.run(tf.contrib.memory_stats.MaxBytesInUse()) / 1.0e6))
+nmi, ami, ars, prc, rcl, iou, hom, com, vms = get_obj_id_metrics(gt_obj_id, predicted_obj_id)
+print("NMI: %.3f AMI: %.3f ARS: %.3f PRC: %.3f RCL: %.3f IOU: %.3f HOM: %.3f COM: %.3f VMS: %.3f %d/%d clusters"% (nmi,ami,ars,prc, rcl, iou, hom,com,vms,len(numpy.unique(predicted_obj_id)),len(numpy.unique(gt_obj_id))))
+acc, iou, avg_acc, avg_iou, stats = get_cls_id_metrics(gt_cls_id, predicted_cls_id, class_labels=classes, printout=False)
+print('all 0 0 0 %.3f 0 %.3f' % (acc, iou))
+print('avg 0 0 0 %.3f 0 %.3f' % (avg_acc, avg_iou))
