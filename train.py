@@ -74,6 +74,7 @@ net_type = 'mcpnet'
 dataset = 's3dis'
 TRAIN_AREA = ['1','2','3','4','6']
 VAL_AREA = ['5']
+USE_XY = True
 for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--train-area':
 		TRAIN_AREA = sys.argv[i+1].split(',')
@@ -83,11 +84,12 @@ for i in range(len(sys.argv)-1):
 		net_type = sys.argv[i+1]
 	if sys.argv[i]=='--dataset':
 		dataset = sys.argv[i+1]
-		if dataset=='guardian_centers':
+		if dataset=='outdoor':
 			local_range = 10
 			NUM_CLASSES = 17
 			feature_size = 3
 			train_subsample = 1
+			USE_XY = False
 mode = None
 if '--color' in sys.argv:
 	mode='color'
@@ -191,7 +193,8 @@ def process_cloud(cloud, robot_position):
 				neighbors -= p
 				neighbor_array.append(neighbors)
 			stacked_points = numpy.hstack((pcd[point_samples,:feature_size], numpy.array(neighbor_array).reshape((len(point_samples), num_neighbors*feature_size))))
-			stacked_points[:, :2] = 0
+            if not USE_XY:
+                stacked_points[:, :2] = 0
 			agg_points.append(stacked_points)
 		else:
 			agg_points.append(pcd[point_samples,:feature_size])

@@ -87,7 +87,7 @@ else:
     velodyne_to_faro = None
 faro_offset = numpy.array([234.40, -8.49, 0])
 if velodyne_to_faro is not None:
-    bag = rosbag.Bag('data/guardian_centers_%s.bag' % AREA, 'w')
+    bag = rosbag.Bag('data/outdoor_%s.bag' % AREA, 'w')
 
 #get ground truth instance labels
 pkl_path = 'viz/gt_obj_map.pkl'

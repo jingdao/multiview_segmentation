@@ -59,7 +59,7 @@ if __name__=='__main__':
 			net = sys.argv[i+1]
 		if sys.argv[i]=='--area':
 			VAL_AREA = int(sys.argv[i+1])
-	MODEL_PATH = 'models/offline_%s_model%d.ckpt' % (net, VAL_AREA)
+	MODEL_PATH = 'models/offline_%s_model_s3dis_%d.ckpt' % (net, VAL_AREA)
 
 	#arrange points into batches of 2048x6
 	train_points = []

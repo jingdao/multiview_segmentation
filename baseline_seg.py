@@ -25,6 +25,7 @@ mode = 'euclidean'
 #mode = 'normals'
 viz = 'cluster'
 AREA = None
+dataset = 's3dis'
 
 for i in range(len(sys.argv)-1):
     if sys.argv[i]=='--mode':
@@ -35,6 +36,8 @@ for i in range(len(sys.argv)-1):
         margin = int(sys.argv[i+1])
     elif sys.argv[i]=='--viz':
         viz = sys.argv[i+1]
+    elif sys.argv[i]=='--dataset':
+        dataset = sys.argv[i+1]
     elif sys.argv[i]=='--area':
         AREA = sys.argv[i+1]
     elif sys.argv[i]=='--range':
@@ -224,7 +227,7 @@ if AREA is None:
     pubOutput = rospy.Publisher('output_cloud', PointCloud2, queue_size=1)
     rospy.spin()
 else:
-    bag = rosbag.Bag('data/guardian_centers_%s.bag' % AREA, 'r')
+    bag = rosbag.Bag('data/%s_%s.bag' % (dataset, AREA), 'r')
     poses = []
     for topic, msg, t in bag.read_messages(topics=['slam_out_pose']):
         poses.append([msg.pose.position.x, msg.pose.position.y])

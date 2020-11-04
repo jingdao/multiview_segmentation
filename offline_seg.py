@@ -65,7 +65,7 @@ if os.path.exists(point_orig_list_path):
     gt_cls_id = point_orig_list[:, 7].astype(int)
     point_orig_list = point_orig_list[:, :6]
 else:
-    bag = rosbag.Bag('data/area%d.bag' % VAL_AREA, 'r')
+    bag = rosbag.Bag('data/s3dis_%d.bag' % VAL_AREA, 'r')
     poses = []
     for topic, msg, t in bag.read_messages(topics=['slam_out_pose']):
         poses.append([msg.pose.position.x, msg.pose.position.y])

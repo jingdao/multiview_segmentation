@@ -54,7 +54,7 @@ config.allow_soft_placement = True
 config.log_device_placement = False
 sess = tf.Session(config=config)
 base_path = 'models'
-MODEL_PATH = '%s/offline_%s_model%d.ckpt' % (base_path, net_type, VAL_AREA)
+MODEL_PATH = '%s/offline_%s_model_s3dis_%d.ckpt' % (base_path, net_type, VAL_AREA)
 if net_type=='pointnet':
 	net = PointNet(1,NUM_POINT,len(classes)) 
 elif net_type=='pointnet2':
@@ -193,7 +193,7 @@ def process_cloud(cloud, robot_position):
 #    print('Scan #%3d: cur:%4d/%6d'%(count_msg, len(update_list), len(point_orig_list)))
     count_msg += 1
 
-bag = rosbag.Bag('data/area%d.bag' % VAL_AREA, 'r')
+bag = rosbag.Bag('data/s3dis_%d.bag' % VAL_AREA, 'r')
 poses = []
 for topic, msg, t in bag.read_messages(topics=['slam_out_pose']):
     poses.append([msg.pose.position.x, msg.pose.position.y])

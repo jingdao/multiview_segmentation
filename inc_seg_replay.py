@@ -2,7 +2,7 @@ import h5py
 import sys
 import numpy
 import scipy
-from class_util import classes, class_to_color_rgb, classes_gc, class_to_color_rgb_gc
+from class_util import classes, class_to_color_rgb, classes_outdoor, class_to_color_rgb_outdoor
 from architecture import MCPNet, PointNet, PointNet2, VoxNet, SGPN
 import itertools
 import os
@@ -21,10 +21,10 @@ from util import savePCD, get_cls_id_metrics, get_obj_id_metrics
 num_neighbors = 50
 neighbor_radii = 0.3
 feature_size = 6
-NUM_CLASSES = len(classes)
 resolution = 0.1
 local_range = 2
 save_viz = False
+USE_XY = True
 
 VAL_AREA = '5'
 net_type = 'mcpnet'
@@ -36,19 +36,21 @@ for i in range(len(sys.argv)):
 		net_type = sys.argv[i+1]
 	if sys.argv[i]=='--dataset':
 		dataset = sys.argv[i+1]
-		if dataset=='guardian_centers':
+		if dataset=='outdoor':
 			local_range = 10
-			NUM_CLASSES = 17
 			feature_size = 3
-			classes = classes_gc
-			class_to_color_rgb = class_to_color_rgb_gc
+			classes = classes_outdoor
+			class_to_color_rgb = class_to_color_rgb_outdoor
+			USE_XY = False
 	if sys.argv[i]=='--save':          
 		save_viz = True
 
+NUM_CLASSES = len(classes)
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
 embedding_size = 50
 samples_per_instance = 16
+numpy.random.seed(0)
 sample_state = numpy.random.RandomState(0)
 count_msg = 0
 obj_count = 0
@@ -162,7 +164,10 @@ def process_cloud(cloud, robot_position):
 		if net_type=='mcpnet' and num_neighbors>0:
 			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*feature_size))
 			stacked_points[:,:feature_size] = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
-			stacked_points[:, :2] = 0
+			if USE_XY:
+				stacked_points[:, :2] -= robot_position
+			else:
+				stacked_points[:, :2] = 0
 			stacked_points[:,2] -= minZ
 			for i in range(len(update_list)):
 				idx = point_id_map[update_list[i]]

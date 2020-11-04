@@ -7,7 +7,7 @@ import time
 import math
 import sys
 from architecture import MCPNet, PointNet, PointNet2, VoxNet, SGPN
-from class_util import classes, class_to_color_rgb, classes_gc, class_to_color_rgb_gc
+from class_util import classes, class_to_color_rgb, classes_outdoor, class_to_color_rgb_outdoor
 import itertools
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, adjusted_mutual_info_score
 import scipy.stats
@@ -34,7 +34,7 @@ net_type = 'mcpnet'
 dataset = 's3dis'
 local_range = 2
 feature_size = 6
-NUM_CLASSES = len(classes)
+USE_XY = True
 for i in range(len(sys.argv)-1):
 	if sys.argv[i]=='--area':
 		VAL_AREA = sys.argv[i+1]
@@ -42,12 +42,12 @@ for i in range(len(sys.argv)-1):
 		net_type = sys.argv[i+1]
 	if sys.argv[i]=='--dataset':
 		dataset = sys.argv[i+1]
-		if dataset=='guardian_centers':
+		if dataset=='outdoor':
 			local_range = 10
-			NUM_CLASSES = 17
 			feature_size = 3
-			classes = classes_gc
-			class_to_color_rgb = class_to_color_rgb_gc
+			classes = classes_outdoor
+			class_to_color_rgb = class_to_color_rgb_outdoor
+			USE_XY = False
 mode = None
 if '--color' in sys.argv:
 	mode='color'
@@ -58,6 +58,7 @@ if '--classify' in sys.argv:
 if '--boxes' in sys.argv:
 	mode='boxes'
 
+NUM_CLASSES = len(classes)
 resolution = 0.1
 num_neighbors = 50
 neighbor_radii = 0.3
@@ -217,7 +218,10 @@ def cloud_surround_callback(cloud):
 		if net_type=='mcpnet' and num_neighbors>0:
 			stacked_points = numpy.zeros((len(update_list), (num_neighbors+1)*feature_size))
 			stacked_points[:,:feature_size] = numpy.array([p[:feature_size] for p in point_orig_list[-len(update_list):]])
-			stacked_points[:, :2] = 0
+			if USE_XY:
+				stacked_points[:, :2] -= robot_position
+			else:
+				stacked_points[:, :2] = 0
 			stacked_points[:,2] -= minZ
 			for i in range(len(update_list)):
 				idx = point_id_map[update_list[i]]
