@@ -48,6 +48,8 @@ for i in range(len(sys.argv)-1):
 			classes = classes_outdoor
 			class_to_color_rgb = class_to_color_rgb_outdoor
 			USE_XY = False
+	if sys.argv[i]=='--range':
+		local_range = float(sys.argv[i+1])
 mode = None
 if '--color' in sys.argv:
 	mode='color'

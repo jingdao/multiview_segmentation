@@ -65,7 +65,7 @@ resolution = 0.1
 num_neighbors = 50
 neighbor_radii = 0.3
 feature_size = 6
-max_epoch = 50
+max_epoch = 10
 samples_per_instance = 16
 train_subsample = 10
 NUM_CLASSES = len(classes)
@@ -90,6 +90,8 @@ for i in range(len(sys.argv)-1):
 			feature_size = 3
 			train_subsample = 1
 			USE_XY = False
+	if sys.argv[i]=='--range':
+		local_range = float(sys.argv[i+1])
 mode = None
 if '--color' in sys.argv:
 	mode='color'
@@ -149,6 +151,8 @@ def process_cloud(cloud, robot_position):
 	local_mask = numpy.sum((pcd[:,:2]-robot_position)**2, axis=1) < local_range * local_range
 	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
+	if len(pcd)==0:
+		return
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5
 	original_pcd = pcd.copy()
 	pcd[:,:2] -= robot_position
@@ -193,8 +197,8 @@ def process_cloud(cloud, robot_position):
 				neighbors -= p
 				neighbor_array.append(neighbors)
 			stacked_points = numpy.hstack((pcd[point_samples,:feature_size], numpy.array(neighbor_array).reshape((len(point_samples), num_neighbors*feature_size))))
-            if not USE_XY:
-                stacked_points[:, :2] = 0
+			if not USE_XY:
+				stacked_points[:, :2] = 0
 			agg_points.append(stacked_points)
 		else:
 			agg_points.append(pcd[point_samples,:feature_size])
