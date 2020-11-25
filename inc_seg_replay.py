@@ -72,7 +72,10 @@ agg_count = []
 normal_threshold = 0.9 #0.8
 color_threshold = 0.005 #0.01
 ed_threshold = 0.1
-dp_threshold = 0.92 if net_type.startswith('mcpnet') else 0.98
+if dataset=='s3dis':
+	dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.98
+else:
+	dp_threshold = 0.92 if net_type.startswith('mcpnet') else 0.9999
 accA = {}
 accB = {}
 accN = {}
@@ -116,6 +119,8 @@ def process_cloud(cloud, robot_position):
 	#only keep nonzero obj_id
 	local_mask = numpy.logical_and(local_mask, pcd[:, 6] > 0)
 	pcd = pcd[local_mask, :]
+	if len(pcd)==0:
+		return
 	#shuffle to remove ordering in Z-direction
 	numpy.random.shuffle(pcd)
 	pcd[:,3:6] = pcd[:,3:6] / 255.0 - 0.5

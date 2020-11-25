@@ -103,7 +103,6 @@ if '--classify' in sys.argv:
 batch_size = 256 if net_type.startswith('mcpnet') else 1024
 hidden_size = 200
 embedding_size = 50
-dp_threshold = 0.9 if net_type.startswith('mcpnet') else 0.99
 
 train_points,train_obj_id,train_cls_id = [],[],[]
 val_points,val_obj_id,val_cls_id = [],[],[]
